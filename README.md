@@ -1,7 +1,6 @@
-# Simudyne Maven Java Skeleton
+# BEng project using Agent-Based Modelling for exploring hedging alternatives in swarm trading conditions
 
-This repository serves as a simple working example of using Simudyne from Java using the Maven build tool. You will need
-Maven installed locally yourself, or provided through an IDE such as Eclipse or IntelliJ. Because Simudyne jars are
+You will need Maven installed locally yourself, or provided through an IDE such as Eclipse or IntelliJ. Because Simudyne jars are
 served from an authenticated artifact repository, you will need to provide information to Maven on where this repository
 is located and your credentials.
 
@@ -18,4 +17,4 @@ Included in the pom.xml is configuration for the `exec-maven-plugin`, so you can
 
 ## Additional Info
 
-For information on distribution, usage, deployment, and more please refer to documentation at our [Portal](https://portal.simudyne.com/)
+For information on distribution, usage, deployment, and more please refer to documentation at [Portal](https://portal.simudyne.com/)
