@@ -64,11 +64,13 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
     }
 
     {
-        registerAgentTypes(Market.class, NoiseTrader.class, MomentumTrader.class, FundamentalTrader.class);
+        registerAgentTypes(Market.class, NoiseTrader.class, MomentumTrader.class, FundamentalTrader.class, MarketMaker.class);
         registerLinkTypes(Links.TradeLink.class);
         createLongAccumulator("buys", "Number of buy orders");
         createLongAccumulator("sells", "Number of sell orders");
         createDoubleAccumulator("price", "Price");
+        createDoubleAccumulator("bidPrice", "Price traders can buy at");
+        createDoubleAccumulator("askPrice", "Price traders can sell at");
     }
 
     @Override

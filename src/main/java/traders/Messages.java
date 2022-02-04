@@ -10,5 +10,7 @@ public class Messages {
   public static class MarketPriceMessage extends Message {
     public double price;
     public double priceChange;
+    public double bidPrice;
+    public double askPrice;
   }
 }
