@@ -1,4 +1,4 @@
-package org.example.models.trading;
+package traders;
 
 import org.apache.commons.math3.random.RandomGenerator;
 import simudyne.core.abm.Action;

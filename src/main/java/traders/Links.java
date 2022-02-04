@@ -1,4 +1,4 @@
-package org.example.models.trading;
+package traders;
 
 import simudyne.core.graph.Link;
 
