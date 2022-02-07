@@ -26,12 +26,6 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
         @Constant(name = "Number of Fundamental Traders")
         public long nbFundamentalTraders = 100;
 
-        @Input(name = "Fundamental Traders")
-        public boolean fundTraders = false;
-
-        @Input(name = "Momentum Traders")
-        public boolean momTraders = false;
-
         @Input(name = "Lambda")
         public double lambda = 10;
 
@@ -56,7 +50,8 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
         @Input(name = "Custom Trader Activity")
         public double traderActivity = 0.1;
 
-
+        @Input(name = "Market Price")
+        public double marketPrice = 4.0;
 
         //TODO: Swap this for seeded
         public double informationSignal = new Random().nextGaussian() * volatilityInfo;
@@ -64,53 +59,27 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
     }
 
     {
-        registerAgentTypes(Market.class, NoiseTrader.class, MomentumTrader.class, FundamentalTrader.class, MarketMaker.class);
+        registerAgentTypes(MarketMaker.class, NoiseTrader.class, MomentumTrader.class, FundamentalTrader.class);
         registerLinkTypes(Links.TradeLink.class);
-        createLongAccumulator("buys", "Number of buy orders");
-        createLongAccumulator("sells", "Number of sell orders");
+        createDoubleAccumulator("buys", "Number of buy orders");
+        createDoubleAccumulator("sells", "Number of sell orders");
         createDoubleAccumulator("price", "Price");
-        createDoubleAccumulator("bidPrice", "Price traders can buy at");
-        createDoubleAccumulator("askPrice", "Price traders can sell at");
+        createDoubleAccumulator("bidPrice", "Bid Price");
+        createDoubleAccumulator("askPrice", "Ask Price");
     }
 
     @Override
     public void setup() {
-        if (!getGlobals().fundTraders && !getGlobals().momTraders) {
-            Group<NoiseTrader> noiseTraderGroup = generateGroup(NoiseTrader.class, getGlobals().nbNoiseTraders);
-            Group<Market> marketGroup = generateGroup(Market.class, 1);
-            noiseTraderGroup.fullyConnected(marketGroup, Links.TradeLink.class);
-            marketGroup.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
-
-        } else if (getGlobals().momTraders && !getGlobals().fundTraders) {
-            Group<NoiseTrader> noiseTraderGroup = generateGroup(NoiseTrader.class, getGlobals().nbNoiseTraders);
-            Group<MomentumTrader> momentumTraderGroup = generateGroup(MomentumTrader.class, getGlobals().nbMomentumTraders);
-            Group<Market> marketGroup = generateGroup(Market.class, 1);
-            momentumTraderGroup.fullyConnected(marketGroup, Links.TradeLink.class);
-            noiseTraderGroup.fullyConnected(marketGroup, Links.TradeLink.class);
-            marketGroup.fullyConnected(momentumTraderGroup, Links.TradeLink.class);
-            marketGroup.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
-
-        } else if (!getGlobals().momTraders && getGlobals().fundTraders) {
-            Group<NoiseTrader> noiseTraderGroup = generateGroup(NoiseTrader.class, getGlobals().nbNoiseTraders);
-            Group<FundamentalTrader> fundamentalTraderGroup = generateGroup(FundamentalTrader.class, getGlobals().nbFundamentalTraders);
-            Group<Market> marketGroup = generateGroup(Market.class, 1);
-            noiseTraderGroup.fullyConnected(marketGroup, Links.TradeLink.class);
-            fundamentalTraderGroup.fullyConnected(marketGroup, Links.TradeLink.class);
-            marketGroup.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
-            marketGroup.fullyConnected(fundamentalTraderGroup, Links.TradeLink.class);
-
-        } else if (getGlobals().momTraders && getGlobals().fundTraders) {
             Group<NoiseTrader> noiseTraderGroup = generateGroup(NoiseTrader.class, getGlobals().nbNoiseTraders);
             Group<MomentumTrader> momentumTraderGroup = generateGroup(MomentumTrader.class, getGlobals().nbMomentumTraders);
             Group<FundamentalTrader> fundamentalTraderGroup = generateGroup(FundamentalTrader.class, getGlobals().nbFundamentalTraders);
-            Group<Market> marketGroup = generateGroup(Market.class, 1);
-            momentumTraderGroup.fullyConnected(marketGroup, Links.TradeLink.class);
-            noiseTraderGroup.fullyConnected(marketGroup, Links.TradeLink.class);
-            fundamentalTraderGroup.fullyConnected(marketGroup, Links.TradeLink.class);
-            marketGroup.fullyConnected(momentumTraderGroup, Links.TradeLink.class);
-            marketGroup.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
-            marketGroup.fullyConnected(fundamentalTraderGroup, Links.TradeLink.class);
-        }
+            Group<MarketMaker> marketMakerGroup = generateGroup(MarketMaker.class, 1);
+            momentumTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
+            noiseTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
+            fundamentalTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
+            marketMakerGroup.fullyConnected(momentumTraderGroup, Links.TradeLink.class);
+            marketMakerGroup.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
+            marketMakerGroup.fullyConnected(fundamentalTraderGroup, Links.TradeLink.class);
 
         super.setup();
     }
@@ -126,11 +95,12 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
                         NoiseTrader.processInformation(),
                         MomentumTrader.processInformation(),
                         FundamentalTrader.processInformation()),
-                Market.calcPriceImpact(),
+                MarketMaker.calculateBuyAndSellPrice(),
                 Split.create(
                         NoiseTrader.updateThreshold(),
                         MomentumTrader.updateMarketData(),
                         FundamentalTrader.updateMarketData())
+
         );
     }
 }

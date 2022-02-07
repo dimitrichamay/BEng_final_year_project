@@ -6,7 +6,7 @@ import simudyne.core.abm.Agent;
 import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
 
-public class NoiseTrader extends Agent<TradingModel.Globals> {
+public class NoiseTrader extends Trader {
 
   RandomGenerator random;
   @Variable public double tradingThresh;
@@ -28,9 +28,9 @@ public class NoiseTrader extends Agent<TradingModel.Globals> {
 
           if (Math.abs(informationSignal) > trader.tradingThresh) {
             if (informationSignal > 0) {
-              trader.buy();
+              trader.buy(1);
             } else {
-              trader.sell();
+              trader.sell(1);
             }
           }
         });
@@ -47,13 +47,5 @@ public class NoiseTrader extends Agent<TradingModel.Globals> {
         });
   }
 
-  private void buy() {
-    getLongAccumulator("buys").add(1);
-    getLinks(Links.TradeLink.class).send(Messages.BuyOrderPlaced.class);
-  }
 
-  private void sell() {
-    getLongAccumulator("sells").add(1);
-    getLinks(Links.TradeLink.class).send(Messages.SellOrderPlaced.class);
-  }
 }
