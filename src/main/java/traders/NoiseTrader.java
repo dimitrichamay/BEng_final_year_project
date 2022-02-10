@@ -1,15 +1,18 @@
 package traders;
 
+import java.util.Random;
 import org.apache.commons.math3.random.RandomGenerator;
 import simudyne.core.abm.Action;
-import simudyne.core.abm.Agent;
 import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
 
-public class NoiseTrader extends Agent<TradingModel.Globals> {
+public class NoiseTrader extends Trader {
 
   RandomGenerator random;
-  @Variable public double tradingThresh;
+  @Variable
+  public double tradingThresh;
+  private double maxBuyOrSellProportion = 3;
+  // 1 / maxBuyOrSellProportion is the proportion of shares that can be bought or sold at one time
 
   @Override
   public void init() {
@@ -25,12 +28,14 @@ public class NoiseTrader extends Agent<TradingModel.Globals> {
     return action(
         trader -> {
           double informationSignal = trader.getGlobals().informationSignal;
-
+          int volume = trader
+              .getRandomInRange(1, (int) Math.floor(trader.shares / trader.maxBuyOrSellProportion));
           if (Math.abs(informationSignal) > trader.tradingThresh) {
-            if (informationSignal > 0) {
-              trader.buy();
+            if (informationSignal > 0 && trader.capital > volume * trader
+                .getGlobals().askPrice) {
+              trader.buy(volume);
             } else {
-              trader.sell();
+              trader.sell(volume);
             }
           }
         });
@@ -47,13 +52,5 @@ public class NoiseTrader extends Agent<TradingModel.Globals> {
         });
   }
 
-  private void buy() {
-    getLongAccumulator("buys").add(1);
-    getLinks(Links.TradeLink.class).send(Messages.BuyOrderPlaced.class);
-  }
 
-  private void sell() {
-    getLongAccumulator("sells").add(1);
-    getLinks(Links.TradeLink.class).send(Messages.SellOrderPlaced.class);
-  }
 }

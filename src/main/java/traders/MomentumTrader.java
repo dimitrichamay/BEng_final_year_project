@@ -1,12 +1,11 @@
 package traders;
 
-import simudyne.core.abm.Action;
-import simudyne.core.abm.Agent;
-import simudyne.core.annotations.Variable;
-import simudyne.core.functions.SerializableConsumer;
-
 import java.util.HashMap;
 import java.util.Map;
+import simudyne.core.abm.Action;
+import simudyne.core.annotations.Variable;
+import simudyne.core.functions.SerializableConsumer;
+import traders.Messages.MarketPriceMessage;
 
 
 /*
@@ -14,59 +13,72 @@ This agent is an example implementation of a moving average trading strategy
 */
 
 
-public class MomentumTrader extends Agent<TradingModel.Globals> {
+public class MomentumTrader extends Trader {
 
-    @Variable(name = "Long Term Moving Average")
-    public double longTermMovingAvg;
+  @Variable(name = "Long Term Bid Moving Average")
+  public double longTermBidMovingAvg;
 
-    @Variable(name = "Short Term Moving Average")
-    public double shortTermMovingAvg;
+  @Variable(name = "Short Term Bid Moving Average")
+  public double shortTermBidMovingAvg;
 
-    public Map<Long, Double> historicalPrices = new HashMap<>();
+  @Variable(name = "Long Term Ask Moving Average")
+  public double longTermAskMovingAvg;
 
-    //Helper function for ease of interpretation
-    private static Action<MomentumTrader> action(SerializableConsumer<MomentumTrader> consumer) {
-        return Action.create(MomentumTrader.class, consumer);
-    }
+  @Variable(name = "Short Term Ask Moving Average")
+  public double shortTermAskMovingAvg;
 
+  public Map<Long, Double> historicalBidPrices = new HashMap<>();
+  public Map<Long, Double> historicalAskPrices = new HashMap<>();
 
-    public static Action<MomentumTrader> processInformation() {
-        return action(
-                trader -> {
-                    if (trader.getContext().getTick() > trader.getGlobals().longTermAverage) {
-                        trader.longTermMovingAvg = trader.getTermMovingAvg(trader.getGlobals().longTermAverage);
-                        trader.shortTermMovingAvg = trader.getTermMovingAvg(trader.getGlobals().shortTermAverage);
-                        double probToBuy = trader.getPrng().uniform(0, 1).sample();
+  //Helper function for ease of interpretation
+  private static Action<MomentumTrader> action(SerializableConsumer<MomentumTrader> consumer) {
+    return Action.create(MomentumTrader.class, consumer);
+  }
 
-                        if (trader.shortTermMovingAvg > trader.longTermMovingAvg && probToBuy < trader.getGlobals().traderActivity) {
-                            trader.buy();
-                        } else if ((trader.shortTermMovingAvg < trader.longTermMovingAvg && probToBuy < trader.getGlobals().traderActivity)) {
-                            trader.sell();
-                        }
-                    }
-                });
-    }
+  public static Action<MomentumTrader> processInformation() {
+    return action(
+        trader -> {
+          if (trader.getContext().getTick() > trader.getGlobals().longTermAverage) {
+            trader.longTermAskMovingAvg = trader
+                .getTermMovingAvg(trader.getGlobals().longTermAverage, trader.historicalAskPrices);
+            trader.shortTermAskMovingAvg = trader
+                .getTermMovingAvg(trader.getGlobals().shortTermAverage, trader.historicalAskPrices);
+            trader.longTermBidMovingAvg = trader
+                .getTermMovingAvg(trader.getGlobals().longTermAverage, trader.historicalBidPrices);
+            trader.shortTermBidMovingAvg = trader
+                .getTermMovingAvg(trader.getGlobals().shortTermAverage,trader.historicalBidPrices);
+            double probToBuy = trader.getPrng().uniform(0, 1).sample();
 
-    public static Action<MomentumTrader> updateMarketData() {
-        return action(
-                trader -> {
-                    trader.historicalPrices.put(trader.getContext().getTick(), trader.getMessageOfType(Messages.MarketPriceMessage.class).price);
-                });
-    }
+            int volume = trader.getRandomInRange(1, (int) trader.shares);
+            if (trader.capital > volume * trader.getGlobals().askPrice) {
+              if (trader.shortTermAskMovingAvg > trader.longTermAskMovingAvg && probToBuy < trader
+                  .getGlobals().traderActivity) {
+                trader.buy(volume);
+              }
+            } else if ((trader.shortTermBidMovingAvg < trader.longTermBidMovingAvg && probToBuy < trader
+                .getGlobals().traderActivity)) {
+              trader.sell(volume);
+            }
+          }
+        });
+  }
 
-    public double getTermMovingAvg(long nbDays) {
-        double totalPrice = historicalPrices.entrySet().stream().filter(a -> a.getKey() > getContext().getTick() - nbDays).mapToDouble(Map.Entry::getValue).sum();
-        return totalPrice / nbDays;
-    }
+  public static Action<MomentumTrader> updateMarketData() {
+    return action(
+        trader -> {
+          trader.historicalAskPrices
+              .put(trader.getContext().getTick(), trader.getMessageOfType(
+                  MarketPriceMessage.class).askPrice);
+          trader.historicalBidPrices
+              .put(trader.getContext().getTick(), trader.getMessageOfType(
+                  MarketPriceMessage.class).bidPrice);
+        });
+  }
 
-    private void buy() {
-        getLongAccumulator("buys").add(1);
-        getLinks(Links.TradeLink.class).send(Messages.BuyOrderPlaced.class);
-    }
-
-    private void sell() {
-        getLongAccumulator("sells").add(1);
-        getLinks(Links.TradeLink.class).send(Messages.SellOrderPlaced.class);
-    }
-
+  public double getTermMovingAvg(long nbDays, Map<Long, Double> historicalPrices) {
+    double totalPrice = historicalPrices.entrySet().stream()
+        .filter(a -> a.getKey() >= getContext().getTick() - nbDays).mapToDouble(Map.Entry::getValue)
+        .sum();
+    return totalPrice / (nbDays);
+  }
 }
