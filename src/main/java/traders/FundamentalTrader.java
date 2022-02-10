@@ -10,11 +10,8 @@ import traders.Messages.MarketPriceMessage;
 
 public class FundamentalTrader extends Trader {
 
-  public Map<Long, Double> historicalPrices = new HashMap<>();
-
-  @Variable(name = "RSI Indicator")
-  public double rsiIndicator;
-
+  public Map<Long, Double> historicalBidPrices = new HashMap<>();
+  public Map<Long, Double> historicalAskPrices = new HashMap<>();
 
   //Helper function for ease of interpretation
   private static Action<FundamentalTrader> action(
@@ -27,11 +24,15 @@ public class FundamentalTrader extends Trader {
     return action(
         trader -> {
           if (trader.getContext().getTick() > trader.getGlobals().rsiPeriod) {
-            trader.rsiIndicator = trader.calculateRSI();
-            if (trader.rsiIndicator > trader.getGlobals().overBuyThresh) {
-              trader.sell(1);
-            } else if (trader.rsiIndicator < trader.getGlobals().overSellThresh) {
-              trader.buy(1);
+            int volume = trader.getRandomInRange(1, (int) trader.shares);
+            double rsiBuy = trader.calculateRSI(trader.historicalAskPrices);
+            double rsiSell = trader.calculateRSI(trader.historicalBidPrices);
+            if (rsiSell > trader.getGlobals().overBuyThresh) {
+              trader.sell(volume);
+            } else if (rsiBuy < trader.getGlobals().overSellThresh) {
+              if (trader.capital > volume * trader.getGlobals().askPrice) {
+                trader.buy(volume);
+              }
             }
           }
         });
@@ -39,12 +40,19 @@ public class FundamentalTrader extends Trader {
 
   public static Action<FundamentalTrader> updateMarketData() {
     return action(
-        trader -> trader.historicalPrices.put(trader.getContext().getTick(), trader.getMessageOfType(
-            MarketPriceMessage.class).price));
+        trader -> {
+          trader.historicalAskPrices
+              .put(trader.getContext().getTick(), trader.getMessageOfType(
+                  MarketPriceMessage.class).askPrice);
+          trader.historicalBidPrices
+              .put(trader.getContext().getTick(), trader.getMessageOfType(
+                  MarketPriceMessage.class).bidPrice);
+        }
+    );
   }
 
 
-  public double calculateRSI() {
+  public double calculateRSI(Map<Long, Double> historicalPrices) {
     double[] histPrices = new double[(int) getGlobals().rsiPeriod];
     for (int i = 0; i < getGlobals().rsiPeriod; i++) {
       histPrices[i] = historicalPrices
