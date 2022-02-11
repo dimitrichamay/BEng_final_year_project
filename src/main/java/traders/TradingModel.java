@@ -28,6 +28,9 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
     @Constant(name = "Number of Fundamental Traders")
     public long nbFundamentalTraders = 100;
 
+    @Constant(name = "Number of Short Sellers")
+    public long nbShortSellers = 100;
+
     @Input(name = "Lambda")
     public double lambda = 10;
 
@@ -68,11 +71,12 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
 
   {
     registerAgentTypes(MarketMaker.class, NoiseTrader.class, MomentumTrader.class,
-        FundamentalTrader.class);
+        FundamentalTrader.class, ShortTrader.class);
     registerLinkTypes(Links.TradeLink.class);
     createDoubleAccumulator("buys", "Number of buy orders");
     createDoubleAccumulator("sells", "Number of sell orders");
     createDoubleAccumulator("price", "Price");
+    createDoubleAccumulator("shorts", "Number of shorts");
   }
 
   @Override
@@ -84,12 +88,18 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
     Group<FundamentalTrader> fundamentalTraderGroup = generateGroup(FundamentalTrader.class,
         getGlobals().nbFundamentalTraders);
     Group<MarketMaker> marketMakerGroup = generateGroup(MarketMaker.class, 1);
+    Group<ShortTrader> shortTraderGroup = generateGroup(ShortTrader.class,
+        getGlobals().nbShortSellers);
+
     momentumTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
     noiseTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
     fundamentalTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
+    shortTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
+
     marketMakerGroup.fullyConnected(momentumTraderGroup, Links.TradeLink.class);
     marketMakerGroup.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
     marketMakerGroup.fullyConnected(fundamentalTraderGroup, Links.TradeLink.class);
+    marketMakerGroup.fullyConnected(shortTraderGroup, Links.TradeLink.class);
 
     super.setup();
   }
@@ -103,12 +113,14 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
         Split.create(
             NoiseTrader.processInformation(),
             MomentumTrader.processInformation(),
-            FundamentalTrader.processInformation()),
+            FundamentalTrader.processInformation(),
+            ShortTrader.processInformation()),
         MarketMaker.calculateBuyAndSellPrice(),
         Split.create(
             NoiseTrader.updateThreshold(),
             MomentumTrader.updateMarketData(),
-            FundamentalTrader.updateMarketData())
+            FundamentalTrader.updateMarketData(),
+            ShortTrader.updateThreshold())
     );
   }
 }
