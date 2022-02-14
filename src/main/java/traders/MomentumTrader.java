@@ -58,6 +58,10 @@ public class MomentumTrader extends Trader {
             } else if ((trader.shortTermBidMovingAvg < trader.longTermBidMovingAvg && probToBuy < trader
                 .getGlobals().traderActivity)) {
               trader.sell(volume);
+              //Short sell if market is falling significantly
+              if (trader.shortTermBidMovingAvg < trader.longTermBidMovingAvg * 0.98){
+                trader.shortStock(volume);
+              }
             }
           }
         });

@@ -29,6 +29,10 @@ public class FundamentalTrader extends Trader {
             double rsiSell = trader.calculateRSI(trader.historicalBidPrices);
             if (rsiSell > trader.getGlobals().overBuyThresh) {
               trader.sell(volume);
+              //If the opportunity is very good we short sell as well as selling
+              if (rsiSell > 1.1 * trader.getGlobals().overBuyThresh){
+                trader.shortStock(volume);
+              }
             } else if (rsiBuy < trader.getGlobals().overSellThresh) {
               if (trader.capital > volume * trader.getGlobals().askPrice) {
                 trader.buy(volume);

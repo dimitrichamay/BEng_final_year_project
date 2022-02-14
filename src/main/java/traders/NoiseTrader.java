@@ -36,6 +36,10 @@ public class NoiseTrader extends Trader {
               trader.buy(volume);
             } else {
               trader.sell(volume);
+              //Short stock if info signal is very negative
+              if (informationSignal < -0.2){
+                trader.shortStock(volume);
+              }
             }
           }
         });
