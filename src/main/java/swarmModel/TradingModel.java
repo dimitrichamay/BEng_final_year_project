@@ -1,5 +1,7 @@
-package traders;
+package swarmModel;
 
+import java.util.HashMap;
+import java.util.Map;
 import simudyne.core.abm.AgentBasedModel;
 import simudyne.core.abm.GlobalState;
 import simudyne.core.abm.Group;
@@ -7,9 +9,11 @@ import simudyne.core.abm.Split;
 import simudyne.core.annotations.Constant;
 import simudyne.core.annotations.Input;
 import simudyne.core.annotations.ModelSettings;
-
-import java.util.Random;
-import simudyne.core.annotations.Variable;
+import swarmModel.links.Links;
+import swarmModel.traders.FundamentalTrader;
+import swarmModel.traders.MarketMaker;
+import swarmModel.traders.MomentumTrader;
+import swarmModel.traders.NoiseTrader;
 
 @ModelSettings(macroStep = 100)
 public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
@@ -28,8 +32,8 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
     @Constant(name = "Number of Fundamental Traders")
     public long nbFundamentalTraders = 100;
 
-    @Constant(name = "Number of Short Sellers")
-    public long nbShortSellers = 100;
+    @Constant(name = "Number of Market Makers")
+    public long nbMarketMakers = 5;
 
     @Input(name = "Lambda")
     public double lambda = 10;
@@ -52,26 +56,28 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
     @Input(name = "Oversold Threshold")
     public double overSellThresh = 30.0;
 
-    @Input(name = "Custom Trader Activity")
+    @Input(name = "Custom Momentum Trader Activity")
     public double traderActivity = 0.1;
+
+    @Input(name = "Custom noise trader activity")
+    public double noiseActivity = 0.4;
 
     @Input(name = "Market Price")
     public double marketPrice = 4.0;
 
-    @Variable(name = "Bid Price")
-    public double bidPrice = 4.04;
+    //This can be changed if desired
+    @Input(name = "Interest Rate")
+    public double interestRate = 0.05;
 
-    @Variable(name = "Ask Price")
-    public double askPrice = 3.96;
+    public Map<Long, Double> historicalPrices = new HashMap<>();
 
-    //TODO: Swap this for seeded
-    public double informationSignal = new Random().nextGaussian() * volatilityInfo;
-
+    public Map<Long, Double> pastNetDemand = new HashMap<>();
+    public Map<Long, Double> pastTotalDemand = new HashMap<>();
   }
 
   {
     registerAgentTypes(MarketMaker.class, NoiseTrader.class, MomentumTrader.class,
-        FundamentalTrader.class, ShortTrader.class);
+        FundamentalTrader.class, Exchange.class);
     registerLinkTypes(Links.TradeLink.class);
     createDoubleAccumulator("buys", "Number of buy orders");
     createDoubleAccumulator("sells", "Number of sell orders");
@@ -87,19 +93,19 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
         getGlobals().nbMomentumTraders);
     Group<FundamentalTrader> fundamentalTraderGroup = generateGroup(FundamentalTrader.class,
         getGlobals().nbFundamentalTraders);
-    Group<MarketMaker> marketMakerGroup = generateGroup(MarketMaker.class, 1);
-    Group<ShortTrader> shortTraderGroup = generateGroup(ShortTrader.class,
-        getGlobals().nbShortSellers);
+    Group<MarketMaker> marketMakerGroup = generateGroup(MarketMaker.class,
+        getGlobals().nbMarketMakers);
+    Group<Exchange> exchange = generateGroup(Exchange.class, 1);
 
-    momentumTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
-    noiseTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
-    fundamentalTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
-    shortTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
+    marketMakerGroup.fullyConnected(exchange, Links.TradeLink.class);
+    momentumTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
+    noiseTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
+    fundamentalTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
 
-    marketMakerGroup.fullyConnected(momentumTraderGroup, Links.TradeLink.class);
-    marketMakerGroup.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
-    marketMakerGroup.fullyConnected(fundamentalTraderGroup, Links.TradeLink.class);
-    marketMakerGroup.fullyConnected(shortTraderGroup, Links.TradeLink.class);
+    exchange.fullyConnected(momentumTraderGroup, Links.TradeLink.class);
+    exchange.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
+    exchange.fullyConnected(fundamentalTraderGroup, Links.TradeLink.class);
+    exchange.fullyConnected(marketMakerGroup, Links.TradeLink.class);
 
     super.setup();
   }
@@ -108,19 +114,25 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
   public void step() {
     super.step();
 
-    getGlobals().informationSignal = new Random().nextGaussian() * getGlobals().volatilityInfo;
+    updateHistoricalPrices();
+    run(Exchange.addNetDemand());
+    run(Exchange.addTotalDemand());
     run(
         Split.create(
             NoiseTrader.processInformation(),
             MomentumTrader.processInformation(),
             FundamentalTrader.processInformation(),
-            ShortTrader.processInformation()),
-        MarketMaker.calculateBuyAndSellPrice(),
+            MarketMaker.processInformation()),
+        Exchange.calculateBuyAndSellPrice(),
         Split.create(
             NoiseTrader.updateThreshold(),
             MomentumTrader.updateMarketData(),
             FundamentalTrader.updateMarketData(),
-            ShortTrader.updateThreshold())
+            MarketMaker.updateMarketData())
     );
+  }
+
+  public void updateHistoricalPrices() {
+    getGlobals().historicalPrices.put(getContext().getTick(), getGlobals().marketPrice);
   }
 }

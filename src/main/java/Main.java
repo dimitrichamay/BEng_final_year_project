@@ -1,4 +1,4 @@
-import traders.TradingModel;
+import swarmModel.TradingModel;
 import simudyne.nexus.Server;
 
 public class Main {

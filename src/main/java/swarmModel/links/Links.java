@@ -1,4 +1,4 @@
-package traders;
+package swarmModel.links;
 
 import simudyne.core.graph.Link;
 

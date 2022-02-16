@@ -1,17 +1,9 @@
-package traders;
+package swarmModel.traders;
 
 import simudyne.core.abm.Action;
-import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
 
-import java.util.HashMap;
-import java.util.Map;
-import traders.Messages.MarketPriceMessage;
-
-public class FundamentalTrader extends Trader {
-
-  public Map<Long, Double> historicalBidPrices = new HashMap<>();
-  public Map<Long, Double> historicalAskPrices = new HashMap<>();
+public class FundamentalTrader extends BaseTrader {
 
   //Helper function for ease of interpretation
   private static Action<FundamentalTrader> action(
@@ -24,19 +16,12 @@ public class FundamentalTrader extends Trader {
     return action(
         trader -> {
           if (trader.getContext().getTick() > trader.getGlobals().rsiPeriod) {
-            int volume = trader.getRandomInRange(1, (int) trader.shares);
-            double rsiBuy = trader.calculateRSI(trader.historicalAskPrices);
-            double rsiSell = trader.calculateRSI(trader.historicalBidPrices);
-            if (rsiSell > trader.getGlobals().overBuyThresh) {
+            int volume = 1; //trader.getRandomInRange(1, (int) trader.shares);
+            double rsi = trader.calculateRSI();
+            if (rsi > trader.getGlobals().overBuyThresh) {
               trader.sell(volume);
-              //If the opportunity is very good we short sell as well as selling
-              if (rsiSell > 1.1 * trader.getGlobals().overBuyThresh){
-                trader.shortStock(volume);
-              }
-            } else if (rsiBuy < trader.getGlobals().overSellThresh) {
-              if (trader.capital > volume * trader.getGlobals().askPrice) {
-                trader.buy(volume);
-              }
+            } else if (rsi < trader.getGlobals().overSellThresh) {
+              trader.buy(volume);
             }
           }
         });
@@ -45,21 +30,15 @@ public class FundamentalTrader extends Trader {
   public static Action<FundamentalTrader> updateMarketData() {
     return action(
         trader -> {
-          trader.historicalAskPrices
-              .put(trader.getContext().getTick(), trader.getMessageOfType(
-                  MarketPriceMessage.class).askPrice);
-          trader.historicalBidPrices
-              .put(trader.getContext().getTick(), trader.getMessageOfType(
-                  MarketPriceMessage.class).bidPrice);
-        }
-    );
+
+        });
   }
 
 
-  public double calculateRSI(Map<Long, Double> historicalPrices) {
+  public double calculateRSI() {
     double[] histPrices = new double[(int) getGlobals().rsiPeriod];
     for (int i = 0; i < getGlobals().rsiPeriod; i++) {
-      histPrices[i] = historicalPrices
+      histPrices[i] = getGlobals().historicalPrices
           .get(getContext().getTick() - (getGlobals().rsiPeriod + 1) + i);
     }
 
@@ -80,8 +59,8 @@ public class FundamentalTrader extends Trader {
     double avgGainInitial = cumulativeGain / getGlobals().rsiPeriod;
     double avgLossInitial = cumulativeLoss / getGlobals().rsiPeriod;
 
-    double currentPrice = historicalPrices.get(getContext().getTick() - 1);
-    double prevPrice = historicalPrices.get(getContext().getTick() - 2);
+    double currentPrice = getGlobals().historicalPrices.get(getContext().getTick() - 1);
+    double prevPrice = getGlobals().historicalPrices.get(getContext().getTick() - 2);
 
     double currentReturn = (currentPrice - prevPrice) / prevPrice;
 
