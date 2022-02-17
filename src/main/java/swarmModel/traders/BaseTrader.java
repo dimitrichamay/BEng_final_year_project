@@ -5,11 +5,11 @@ import java.util.List;
 import java.util.Random;
 import simudyne.core.abm.Agent;
 import simudyne.core.annotations.Variable;
+import swarmModel.Globals;
 import swarmModel.links.Links.TradeLink;
 import swarmModel.links.Messages.BuyOrderPlaced;
 import swarmModel.links.Messages.SellOrderPlaced;
 import swarmModel.utils.Option;
-import swarmModel.TradingModel.Globals;
 
 public abstract class BaseTrader extends Agent<Globals> {
 

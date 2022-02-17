@@ -1,13 +1,13 @@
 package swarmModel;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Random;
+import java.util.stream.DoubleStream;
+import java.util.stream.Stream;
 import simudyne.core.abm.AgentBasedModel;
-import simudyne.core.abm.GlobalState;
 import simudyne.core.abm.Group;
 import simudyne.core.abm.Split;
-import simudyne.core.annotations.Constant;
-import simudyne.core.annotations.Input;
 import simudyne.core.annotations.ModelSettings;
 import swarmModel.links.Links;
 import swarmModel.traders.FundamentalTrader;
@@ -16,64 +16,7 @@ import swarmModel.traders.MomentumTrader;
 import swarmModel.traders.NoiseTrader;
 
 @ModelSettings(macroStep = 100)
-public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
-
-  public static final class Globals extends GlobalState {
-
-    @Input(name = "Update Frequency")
-    public double updateFrequency = 0.01;
-
-    @Constant(name = "Number of Noise Traders")
-    public long nbNoiseTraders = 1000;
-
-    @Constant(name = "Number of Momentum Traders")
-    public long nbMomentumTraders = 100;
-
-    @Constant(name = "Number of Fundamental Traders")
-    public long nbFundamentalTraders = 100;
-
-    @Constant(name = "Number of Market Makers")
-    public long nbMarketMakers = 5;
-
-    @Input(name = "Lambda")
-    public double lambda = 10;
-
-    @Input(name = "Volatility of Information Signal")
-    public double volatilityInfo = 0.001;
-
-    @Input(name = "Momentum: Short Term Average")
-    public long shortTermAverage = 7;
-
-    @Input(name = "Momentum: Long Term Average")
-    public long longTermAverage = 21;
-
-    @Input(name = "RSI Look Back Period")
-    public long rsiPeriod = 14;
-
-    @Input(name = "Overbought Threshold")
-    public double overBuyThresh = 70.0;
-
-    @Input(name = "Oversold Threshold")
-    public double overSellThresh = 30.0;
-
-    @Input(name = "Custom Momentum Trader Activity")
-    public double traderActivity = 0.1;
-
-    @Input(name = "Custom noise trader activity")
-    public double noiseActivity = 0.4;
-
-    @Input(name = "Market Price")
-    public double marketPrice = 4.0;
-
-    //This can be changed if desired
-    @Input(name = "Interest Rate")
-    public double interestRate = 0.05;
-
-    public Map<Long, Double> historicalPrices = new HashMap<>();
-
-    public Map<Long, Double> pastNetDemand = new HashMap<>();
-    public Map<Long, Double> pastTotalDemand = new HashMap<>();
-  }
+public class TradingModel extends AgentBasedModel<Globals> {
 
   {
     registerAgentTypes(MarketMaker.class, NoiseTrader.class, MomentumTrader.class,
@@ -114,6 +57,11 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
   public void step() {
     super.step();
 
+    // We update the interest rate every 10 iterations
+    if (getContext().getTick() % 10 == 0 && getContext().getTick() > 0) {
+      updateInterestRate();
+      System.out.println(getGlobals().interestRate);
+    }
     updateHistoricalPrices();
     run(Exchange.addNetDemand());
     run(Exchange.addTotalDemand());
@@ -134,5 +82,35 @@ public class TradingModel extends AgentBasedModel<TradingModel.Globals> {
 
   public void updateHistoricalPrices() {
     getGlobals().historicalPrices.put(getContext().getTick(), getGlobals().marketPrice);
+  }
+
+  // This uses the Vasicek Interest Rate Model, dr_t = a(b-r_t)dt + sigma * dW_t, we look at the UK in this model
+  public void updateInterestRate() {
+    double meanReversionSpeed = 0.5; // Half life of change / ln(2)
+    double longTermLevel = 0.83; // Long term mean interest rate
+    double dWt = getWienerRate();
+    double volatility = calculateVolatility(10);
+    double changeOfRate =
+        meanReversionSpeed * (longTermLevel - getGlobals().interestRate) + volatility * dWt;
+
+    getGlobals().interestRate += changeOfRate;
+  }
+
+  /* W has gaussian increments, ie W_t+u - W_t ~ N(0, u). We take u to be 1 here since every
+   *  time we update the interest rate we want to model this as a single time step in the model*/
+  private double getWienerRate() {
+    Random r = new Random();
+    return r.nextGaussian();
+  }
+
+  // We use the standard deviation as a measure for the volatility of the price
+  private double calculateVolatility(int timeFrame) {
+    double mean = getGlobals().historicalPrices.entrySet().stream()
+        .filter(a -> a.getKey() >= getContext().getTick() - timeFrame).mapToDouble(Entry::getValue)
+        .average().getAsDouble();
+    double squaredDevs = getGlobals().historicalPrices.entrySet().stream()
+        .filter(a -> a.getKey() >= getContext().getTick() - timeFrame).mapToDouble(Entry::getValue)
+        .map(a -> Math.pow((mean - a), 2)).sum();
+    return Math.sqrt(squaredDevs / timeFrame);
   }
 }

@@ -3,7 +3,7 @@ package swarmModel;
 import simudyne.core.abm.Action;
 import simudyne.core.abm.Agent;
 import simudyne.core.functions.SerializableConsumer;
-import swarmModel.TradingModel.Globals;
+import swarmModel.Globals;
 import swarmModel.links.Links;
 import swarmModel.links.Messages;
 
