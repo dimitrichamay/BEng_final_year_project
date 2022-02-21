@@ -28,7 +28,6 @@ public class MarketMaker extends BaseTrader {
       double predictNetDemand = marketMaker.predictNetDemand();
       if (Math.abs(predictNetDemand / marketMaker.predictTotalDemand()) > maxThreshold) {
         if (predictNetDemand > 0) {
-          System.out.println("reaches here");
           marketMaker.sell(Math.round(predictNetDemand * 0.5));
         } else {
           marketMaker.buy(Math.round((-predictNetDemand) * 0.5));

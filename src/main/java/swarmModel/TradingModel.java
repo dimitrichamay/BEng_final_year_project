@@ -57,7 +57,6 @@ public class TradingModel extends AgentBasedModel<Globals> {
     // We update the interest rate every 10 iterations
     if (getContext().getTick() % 10 == 0 && getContext().getTick() > 0) {
       updateInterestRate();
-      System.out.println(getGlobals().interestRate);
     }
     updateHistoricalPrices();
     run(Exchange.addNetDemand());
