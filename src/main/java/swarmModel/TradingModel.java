@@ -1,10 +1,7 @@
 package swarmModel;
 
-import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
-import java.util.stream.DoubleStream;
-import java.util.stream.Stream;
 import simudyne.core.abm.AgentBasedModel;
 import simudyne.core.abm.Group;
 import simudyne.core.abm.Split;
@@ -65,6 +62,7 @@ public class TradingModel extends AgentBasedModel<Globals> {
     updateHistoricalPrices();
     run(Exchange.addNetDemand());
     run(Exchange.addTotalDemand());
+    run(Exchange.updatePolynomial());
     run(
         Split.create(
             NoiseTrader.processInformation(),

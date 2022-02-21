@@ -1,6 +1,8 @@
 package swarmModel;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import simudyne.core.abm.GlobalState;
 import simudyne.core.annotations.Constant;
@@ -57,9 +59,15 @@ public final class Globals extends GlobalState {
   @Input(name = "Interest Rate")
   public double interestRate = 0.028;
 
+  //The number of ticks over which the derivative polynomial is fitted for netDemand
+  @Input(name = "Derivative time frame")
+  public double derivativeTimeFrame = 10;
+
   public Map<Long, Double> historicalPrices = new HashMap<>();
 
   public Map<Long, Double> pastNetDemand = new HashMap<>();
   public Map<Long, Double> pastTotalDemand = new HashMap<>();
+  public double[] coeffs = new double[10];
+
 }
 

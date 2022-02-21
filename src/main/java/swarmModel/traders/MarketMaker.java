@@ -1,6 +1,7 @@
 package swarmModel.traders;
 
 import java.util.Map.Entry;
+import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import simudyne.core.abm.Action;
 import simudyne.core.functions.SerializableConsumer;
 import swarmModel.utils.Option;
@@ -27,6 +28,7 @@ public class MarketMaker extends BaseTrader {
       double predictNetDemand = marketMaker.predictNetDemand();
       if (Math.abs(predictNetDemand / marketMaker.predictTotalDemand()) > maxThreshold) {
         if (predictNetDemand > 0) {
+          System.out.println("reaches here");
           marketMaker.sell(Math.round(predictNetDemand * 0.5));
         } else {
           marketMaker.buy(Math.round((-predictNetDemand) * 0.5));
@@ -51,18 +53,13 @@ public class MarketMaker extends BaseTrader {
     return demandPrediction / nbStepsPrediction;
   }
 
-  //todo: refine this to use derivatives
+  // Predicts the net demand at the current time step using a polynomial fitted to the last 10 points
   private double predictNetDemand() {
-    if (getContext().getTick() == 0) {
-      return 1000000;
-    } else if (getContext().getTick() < nbStepsPrediction) {
-      return getGlobals().pastNetDemand.entrySet().stream().mapToDouble(Entry::getValue).sum()
-          / getContext().getTick();
+    if (getContext().getTick() <= getGlobals().derivativeTimeFrame) {
+      return 0;
     }
-    double demandTotal = getGlobals().pastNetDemand.entrySet().stream()
-        .filter(a -> a.getKey() >= getContext().getTick() - nbStepsPrediction)
-        .mapToDouble(Entry::getValue).sum();
-    return demandTotal / nbStepsPrediction;
+    return new PolynomialFunction(getGlobals().coeffs)
+        .value(getContext().getTick());
   }
 
   public static Action<MarketMaker> updateMarketData() {

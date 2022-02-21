@@ -1,5 +1,9 @@
 package swarmModel;
 
+import java.util.Arrays;
+import java.util.Map.Entry;
+import org.apache.commons.math3.fitting.PolynomialCurveFitter;
+import org.apache.commons.math3.fitting.WeightedObservedPoints;
 import simudyne.core.abm.Action;
 import simudyne.core.abm.Agent;
 import simudyne.core.functions.SerializableConsumer;
@@ -57,15 +61,33 @@ public class Exchange extends Agent<Globals> {
         });
   }
 
-  public static Action<Exchange> addNetDemand(){
+  public static Action<Exchange> addNetDemand() {
     return action(exchange -> {
-      exchange.getGlobals().pastNetDemand.put(exchange.getContext().getTick(), (double) exchange.lastNetDemand);
+      exchange.getGlobals().pastNetDemand
+          .put(exchange.getContext().getTick(), (double) exchange.lastNetDemand);
     });
   }
 
-  public static Action<Exchange> addTotalDemand(){
+  public static Action<Exchange> addTotalDemand() {
     return action(exchange -> {
-      exchange.getGlobals().pastTotalDemand.put(exchange.getContext().getTick(), (double) exchange.totalDemand);
+      exchange.getGlobals().pastTotalDemand
+          .put(exchange.getContext().getTick(), (double) exchange.totalDemand);
+    });
+  }
+
+  public static Action<Exchange> updatePolynomial() {
+    final WeightedObservedPoints obs = new WeightedObservedPoints();
+    return action(exchange -> {
+      if (exchange.getContext().getTick() < exchange.getGlobals().derivativeTimeFrame){
+        return;
+      }
+      exchange.getGlobals().pastNetDemand.entrySet().stream()
+          .filter(a -> a.getKey() >= exchange.getContext().getTick() - exchange
+              .getGlobals().derivativeTimeFrame)
+          .forEach(a -> obs.add(a.getKey(), a.getValue()));
+      final PolynomialCurveFitter fitter = PolynomialCurveFitter
+          .create((int) exchange.getGlobals().derivativeTimeFrame);
+      exchange.getGlobals().coeffs = fitter.fit(obs.toList());
     });
   }
 
