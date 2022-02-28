@@ -102,6 +102,9 @@ public class TradingModel extends AgentBasedModel<Globals> {
 
   // We use the standard deviation as a measure for the volatility of the price
   private double calculateVolatility(int timeFrame) {
+    if (getGlobals().historicalPrices.isEmpty()){
+      return 0;
+    }
     double mean = getGlobals().historicalPrices.entrySet().stream()
         .filter(a -> a.getKey() >= getContext().getTick() - timeFrame).mapToDouble(Entry::getValue)
         .average().getAsDouble();
