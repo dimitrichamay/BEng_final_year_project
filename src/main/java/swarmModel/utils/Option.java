@@ -1,33 +1,25 @@
 package swarmModel.utils;
 
+import swarmModel.Exchange;
+import swarmModel.Globals;
+
 public class Option {
 
   private enum type {CALL, PUT}
 
-  private double optionPrice;
+  private double optionPrice = 0;
 
   //This is represented as the number of steps until it expires
   private int timeToExpiry;
 
   private double exercisePrice;
 
-  public Option(int timeToExpiry, double exercisePrice) {
-    optionPrice = calculateOptionPrice();
+  private type optionType;
+
+  public Option(int timeToExpiry, double exercisePrice, type optionType) {
     this.timeToExpiry = timeToExpiry;
     this.exercisePrice = exercisePrice;
-  }
-
-  private double calculateOptionPrice() {
-    /* Black Scholes Equation: Cost = Stock price * N(d1) - Exercise price * e^(-interestRate * timeToExpiry) * N(d2)
-       where N(d1) and N(d2) are cumulative distribution functions for the normal distribution */
-    double nd1 = getNormalDistribution(1);
-    double nd2 = getNormalDistribution(2);
-    return 0;
-  }
-
-  private double getNormalDistribution(int d1ord2) {
-    //double d = Math.log()
-    return 0;
+    this.optionType = optionType;
   }
 
   public void timeStep() {
@@ -44,6 +36,14 @@ public class Option {
 
   public int getTimeToExpiry() {
     return timeToExpiry;
+  }
+
+  public type getOptionType() {
+    return optionType;
+  }
+
+  public boolean isCallOption(){
+    return optionType == type.CALL;
   }
 
   public void setTimeToExpiry(int timeToExpiry) {

@@ -28,8 +28,8 @@ public final class Globals extends GlobalState {
   @Input(name = "Lambda")
   public double lambda = 10;
 
-  @Input(name = "Volatility of Information Signal")
-  public double volatilityInfo = 0.001;
+  @Input(name = "Volatility")
+  public double volatility = 0;
 
   @Input(name = "Momentum: Short Term Average")
   public long shortTermAverage = 7;

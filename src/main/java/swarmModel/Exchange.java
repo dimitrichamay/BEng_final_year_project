@@ -1,15 +1,14 @@
 package swarmModel;
 
-import java.util.Arrays;
-import java.util.Map.Entry;
+import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.fitting.PolynomialCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoints;
 import simudyne.core.abm.Action;
 import simudyne.core.abm.Agent;
 import simudyne.core.functions.SerializableConsumer;
-import swarmModel.Globals;
 import swarmModel.links.Links;
 import swarmModel.links.Messages;
+import swarmModel.utils.Option;
 
 public class Exchange extends Agent<Globals> {
 
@@ -78,7 +77,7 @@ public class Exchange extends Agent<Globals> {
   public static Action<Exchange> updatePolynomial() {
     final WeightedObservedPoints obs = new WeightedObservedPoints();
     return action(exchange -> {
-      if (exchange.getContext().getTick() < exchange.getGlobals().derivativeTimeFrame){
+      if (exchange.getContext().getTick() < exchange.getGlobals().derivativeTimeFrame) {
         return;
       }
       exchange.getGlobals().pastNetDemand.entrySet().stream()
@@ -94,5 +93,39 @@ public class Exchange extends Agent<Globals> {
   private long getNumberOfTraders() {
     return getGlobals().nbFundamentalTraders + getGlobals().nbNoiseTraders
         + getGlobals().nbMomentumTraders;
+  }
+
+  /*********** OPTION PRICING ************/
+
+  public double calculateOptionPrice(Option option) {
+    /* Black Scholes Equation: Cost = Stock price * N(d1) - Exercise price * e^(-interestRate * timeToExpiry) * N(d2)
+       where N(d1) and N(d2) are cumulative distribution functions for the normal distribution */
+    double stockPrice = getGlobals().marketPrice;
+    double exercisePrice = option.getExercisePrice();
+    double r = getGlobals().interestRate;
+    double timeToExpiry = option.getTimeToExpiry();
+    // Time to expiry is represented in years for these calculations, each timeStep = 1 day
+    //todo: check that steps are 1 day long
+    timeToExpiry = timeToExpiry / 365;
+
+    double d1 = (1 / (getGlobals().volatility * Math.sqrt(timeToExpiry))) * (
+        Math.log(stockPrice / exercisePrice)
+            + (r + Math.pow(getGlobals().volatility, 2)) * timeToExpiry);
+    double d2 = d1 - getGlobals().volatility * timeToExpiry;
+
+    if (option.isCallOption()) {
+      return stockPrice * getNormalDistribution(d1)
+          - exercisePrice * Math.exp(-r * timeToExpiry)
+          * d2;
+    } else {
+      return -d2 * exercisePrice
+          * Math.exp(-r * timeToExpiry)
+          - (-d1) * stockPrice;
+    }
+  }
+
+  private double getNormalDistribution(double d) {
+    NormalDistribution normalDistribution = new NormalDistribution();
+    return normalDistribution.cumulativeProbability(d);
   }
 }

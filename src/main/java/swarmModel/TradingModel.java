@@ -93,7 +93,7 @@ public class TradingModel extends AgentBasedModel<Globals> {
     getGlobals().interestRate += changeOfRate;
   }
 
-  /* W has gaussian increments, ie W_t+u - W_t ~ N(0, u). We take u to be 1 here since every
+  /* Wiener rate has gaussian increments, ie W_t+u - W_t ~ N(0, u). We take u to be 1 here since every
    *  time we update the interest rate we want to model this as a single time step in the model*/
   private double getWienerRate() {
     Random r = new Random();
@@ -111,6 +111,7 @@ public class TradingModel extends AgentBasedModel<Globals> {
     double squaredDevs = getGlobals().historicalPrices.entrySet().stream()
         .filter(a -> a.getKey() >= getContext().getTick() - timeFrame).mapToDouble(Entry::getValue)
         .map(a -> Math.pow((mean - a), 2)).sum();
-    return Math.sqrt(squaredDevs / timeFrame);
+    getGlobals().volatility = Math.sqrt(squaredDevs / timeFrame);
+    return getGlobals().volatility;
   }
 }
