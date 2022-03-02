@@ -1,6 +1,7 @@
 package swarmModel.links;
 
 import simudyne.core.graph.Message;
+import swarmModel.utils.Option;
 
 public class Messages {
   public static class BuyOrderPlaced extends Message {
@@ -17,4 +18,14 @@ public class Messages {
     public double price;
     public double priceChange;
   }
+
+  public static class PutOptionBought extends Message {
+    public Option option;
+  }
+
+  public static class CallOptionBought extends Message {
+    public Option option;
+  }
+
+  public static class OptionUpdated extends Message{}
 }

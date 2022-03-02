@@ -4,6 +4,7 @@ import java.util.Map.Entry;
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import simudyne.core.abm.Action;
 import simudyne.core.functions.SerializableConsumer;
+import swarmModel.links.Messages;
 import swarmModel.utils.Option;
 
 /* On each time step the market maker updates the current buy and sell price based on
@@ -17,6 +18,9 @@ public class MarketMaker extends BaseTrader {
   private static final double maxThreshold = 0.05;
 
   private static final double nbStepsPrediction = 5;
+
+  private int sharesToBuy = 0;
+  private int sharesToSell = 0;
 
   //Helper function for ease of interpretation
   private static Action<MarketMaker> action(SerializableConsumer<MarketMaker> consumer) {
@@ -33,6 +37,17 @@ public class MarketMaker extends BaseTrader {
           marketMaker.buy(Math.round((-predictNetDemand) * 0.5));
         }
       }
+      marketMaker.shortStock(marketMaker.sharesToSell);
+      marketMaker.buy(marketMaker.sharesToBuy);
+      marketMaker.sharesToBuy = 0;
+      marketMaker.sharesToSell = 0;
+    });
+  }
+
+  public static Action<MarketMaker> processOptions(){
+    return action(marketMaker -> {
+      marketMaker.sellCallOptions();
+      marketMaker.sellPutOptions();
     });
   }
 
@@ -71,14 +86,26 @@ public class MarketMaker extends BaseTrader {
         + getGlobals().nbMomentumTraders;
   }
 
-  /***************** Option Pricing ****************/
+  /*********** OPTION SELLING **********/
 
-  public void sellOption(Option option) {
-    getOptions().add(option);
+  public void sellPutOptions() {
+    getMessagesOfType(Messages.PutOptionBought.class).stream().forEach(putOptionBought -> {
+      Option option = putOptionBought.option;
+      soldOptions.add(option);
+      capital += option.getOptionPrice();
+      //Todo: can change covering option every single time
+      sharesToSell += 100;
+    });
   }
 
-  public void coverPosition(Option option) {
-
+  public void sellCallOptions() {
+    getMessagesOfType(Messages.CallOptionBought.class).stream().forEach(callOptionBought -> {
+      Option option = callOptionBought.option;
+      soldOptions.add(option);
+      capital += option.getOptionPrice();
+      //Todo: can change covering option every single time
+      sharesToBuy += 100;
+    });
   }
 
 }

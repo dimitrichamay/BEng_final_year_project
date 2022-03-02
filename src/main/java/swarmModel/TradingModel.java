@@ -4,9 +4,11 @@ import java.util.Map.Entry;
 import java.util.Random;
 import simudyne.core.abm.AgentBasedModel;
 import simudyne.core.abm.Group;
+import simudyne.core.abm.Sequence;
 import simudyne.core.abm.Split;
 import simudyne.core.annotations.ModelSettings;
 import swarmModel.links.Links;
+import swarmModel.traders.BaseTrader;
 import swarmModel.traders.FundamentalTrader;
 import swarmModel.traders.MarketMaker;
 import swarmModel.traders.MomentumTrader;
@@ -23,6 +25,8 @@ public class TradingModel extends AgentBasedModel<Globals> {
     createDoubleAccumulator("sells", "Number of sell orders");
     createDoubleAccumulator("price", "Price");
     createDoubleAccumulator("shorts", "Number of shorts");
+    createDoubleAccumulator("putOptionsBought", "Number of PUT options bought");
+    createDoubleAccumulator("callOptionsBought", "Number of CALL options bought");
   }
 
   @Override
@@ -34,8 +38,11 @@ public class TradingModel extends AgentBasedModel<Globals> {
     Group<FundamentalTrader> fundamentalTraderGroup = generateGroup(FundamentalTrader.class,
         getGlobals().nbFundamentalTraders);
     Group<MarketMaker> marketMakerGroup = generateGroup(MarketMaker.class,
-        getGlobals().nbMarketMakers);
+        1);
     Group<Exchange> exchange = generateGroup(Exchange.class, 1);
+
+    marketMakerGroup.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
+    noiseTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
 
     marketMakerGroup.fullyConnected(exchange, Links.TradeLink.class);
     momentumTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
@@ -55,20 +62,26 @@ public class TradingModel extends AgentBasedModel<Globals> {
     super.step();
 
     // We update the interest rate every 10 iterations
-    if (getContext().getTick() % 10 == 0 && getContext().getTick() > 0) {
+    if (getContext().getTick() % 5 == 0 && getContext().getTick() > 20) {
       updateInterestRate();
     }
     updateHistoricalPrices();
     run(Exchange.addNetDemand());
     run(Exchange.addTotalDemand());
     run(Exchange.updatePolynomial());
+    run(NoiseTrader.updateOptions());
+
+    run(NoiseTrader.processOptions(),
+        MarketMaker.processOptions());
     run(
         Split.create(
             NoiseTrader.processInformation(),
             MomentumTrader.processInformation(),
             FundamentalTrader.processInformation(),
             MarketMaker.processInformation()),
+
         Exchange.calculateBuyAndSellPrice(),
+
         Split.create(
             NoiseTrader.updateThreshold(),
             MomentumTrader.updateMarketData(),
@@ -86,7 +99,7 @@ public class TradingModel extends AgentBasedModel<Globals> {
     double meanReversionSpeed = 0.5; // Half life of change / ln(2)
     double longTermLevel = 0.83; // Long term mean interest rate
     double dWt = getWienerRate();
-    double volatility = calculateVolatility(10);
+    double volatility = calculateVolatility(20);
     double changeOfRate =
         meanReversionSpeed * (longTermLevel - getGlobals().interestRate) + volatility * dWt;
 
@@ -100,9 +113,10 @@ public class TradingModel extends AgentBasedModel<Globals> {
     return r.nextGaussian();
   }
 
+  //todo: fix this volatility measure so stops giving 0
   // We use the standard deviation as a measure for the volatility of the price
   private double calculateVolatility(int timeFrame) {
-    if (getGlobals().historicalPrices.isEmpty()){
+    if (getGlobals().historicalPrices.isEmpty()) {
       return 0;
     }
     double mean = getGlobals().historicalPrices.entrySet().stream()
@@ -111,7 +125,8 @@ public class TradingModel extends AgentBasedModel<Globals> {
     double squaredDevs = getGlobals().historicalPrices.entrySet().stream()
         .filter(a -> a.getKey() >= getContext().getTick() - timeFrame).mapToDouble(Entry::getValue)
         .map(a -> Math.pow((mean - a), 2)).sum();
-    getGlobals().volatility = Math.sqrt(squaredDevs / timeFrame);
+    //getGlobals().volatility = Math.sqrt(squaredDevs / timeFrame);
+    getGlobals().volatility = 1;
     return getGlobals().volatility;
   }
 }

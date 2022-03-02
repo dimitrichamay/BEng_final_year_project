@@ -5,7 +5,7 @@ import swarmModel.Globals;
 
 public class Option {
 
-  private enum type {CALL, PUT}
+  public enum type {CALL, PUT}
 
   private double optionPrice = 0;
 
@@ -22,8 +22,9 @@ public class Option {
     this.optionType = optionType;
   }
 
-  public void timeStep() {
+  public boolean timeStep() {
     timeToExpiry--;
+    return timeToExpiry == 0;
   }
 
   public double getOptionPrice() {
@@ -42,7 +43,7 @@ public class Option {
     return optionType;
   }
 
-  public boolean isCallOption(){
+  public boolean isCallOption() {
     return optionType == type.CALL;
   }
 

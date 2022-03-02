@@ -17,13 +17,10 @@ public final class Globals extends GlobalState {
   public long nbNoiseTraders = 1000;
 
   @Constant(name = "Number of Momentum Traders")
-  public long nbMomentumTraders = 100;
+  public long nbMomentumTraders = 1000;
 
   @Constant(name = "Number of Fundamental Traders")
-  public long nbFundamentalTraders = 100;
-
-  @Constant(name = "Number of Market Makers")
-  public long nbMarketMakers = 5;
+  public long nbFundamentalTraders = 1000;
 
   @Input(name = "Lambda")
   public double lambda = 10;

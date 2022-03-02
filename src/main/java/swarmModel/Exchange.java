@@ -95,37 +95,5 @@ public class Exchange extends Agent<Globals> {
         + getGlobals().nbMomentumTraders;
   }
 
-  /*********** OPTION PRICING ************/
 
-  public double calculateOptionPrice(Option option) {
-    /* Black Scholes Equation: Cost = Stock price * N(d1) - Exercise price * e^(-interestRate * timeToExpiry) * N(d2)
-       where N(d1) and N(d2) are cumulative distribution functions for the normal distribution */
-    double stockPrice = getGlobals().marketPrice;
-    double exercisePrice = option.getExercisePrice();
-    double r = getGlobals().interestRate;
-    double timeToExpiry = option.getTimeToExpiry();
-    // Time to expiry is represented in years for these calculations, each timeStep = 1 day
-    //todo: check that steps are 1 day long
-    timeToExpiry = timeToExpiry / 365;
-
-    double d1 = (1 / (getGlobals().volatility * Math.sqrt(timeToExpiry))) * (
-        Math.log(stockPrice / exercisePrice)
-            + (r + Math.pow(getGlobals().volatility, 2)) * timeToExpiry);
-    double d2 = d1 - getGlobals().volatility * timeToExpiry;
-
-    if (option.isCallOption()) {
-      return stockPrice * getNormalDistribution(d1)
-          - exercisePrice * Math.exp(-r * timeToExpiry)
-          * d2;
-    } else {
-      return -d2 * exercisePrice
-          * Math.exp(-r * timeToExpiry)
-          - (-d1) * stockPrice;
-    }
-  }
-
-  private double getNormalDistribution(double d) {
-    NormalDistribution normalDistribution = new NormalDistribution();
-    return normalDistribution.cumulativeProbability(d);
-  }
 }
