@@ -14,7 +14,7 @@ import swarmModel.utils.Option;
 
 public class Exchange extends Agent<Globals> {
 
-  public double price = 4.0;
+  public double price = 15;
 
   //Helper function for ease of interpretation
   private static Action<Exchange> action(SerializableConsumer<Exchange> consumer) {
@@ -46,7 +46,12 @@ public class Exchange extends Agent<Globals> {
             long nbTraders = exchange.getNumberOfTraders();
             double lambda = exchange.getGlobals().lambda;
             double priceChange = (netDemand / (double) nbTraders) / lambda;
-            exchange.price += priceChange;
+            //todo: handle 0 price
+            if (exchange.price + priceChange > 0){
+              exchange.price += priceChange;
+            }else{
+              exchange.price = 0;
+            }
 
             exchange.getDoubleAccumulator("price").add(exchange.price);
 

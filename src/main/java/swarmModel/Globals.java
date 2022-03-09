@@ -50,7 +50,7 @@ public final class Globals extends GlobalState {
   public double noiseActivity = 0.4;
 
   @Input(name = "Market Price")
-  public double marketPrice = 4.0;
+  public double marketPrice = 15;
 
   //This can be changed if desired but is set to the interest rate level in Jan 2021
   @Input(name = "Interest Rate")

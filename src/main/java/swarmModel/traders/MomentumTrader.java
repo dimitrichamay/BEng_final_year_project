@@ -49,12 +49,16 @@ public class MomentumTrader extends BaseTrader {
         });
   }
 
-  public static Action<MomentumTrader> processOptions(){
+  public static Action<MomentumTrader> processOptions() {
     return action(trader -> {
-      if (trader.shortTermMovingAvg > trader.longTermMovingAvg) {
-        //trader.buyCallOption(20, trader.getGlobals().marketPrice + 2);
-      } else if (Math.abs(trader.shortTermMovingAvg) < 0.2) {
-        //trader.buyPutOption(20, trader.getGlobals().marketPrice);
+      double tradingThresh = trader.getPrng().uniform(0, 1).sample();
+      double probToBuy = trader.getPrng().uniform(0, 1).sample();
+      if (probToBuy < trader.getGlobals().noiseActivity) {
+        if (Math.abs(tradingThresh) > 0.95) {
+          trader.buyCallOption(20, trader.getGlobals().marketPrice * 1.1);
+        } else if (Math.abs(tradingThresh) < 0.05) {
+          trader.buyPutOption(20, trader.getGlobals().marketPrice * 0.9);
+        }
       }
     });
   }

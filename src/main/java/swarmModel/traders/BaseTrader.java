@@ -30,9 +30,9 @@ public abstract class BaseTrader extends Agent<Globals> {
   @Variable
   public double callOptions = 0;
 
-  //todo: update this 4 to be the initial price in the model
+  //todo: update this 15 to be the initial price in the model
   @Variable
-  public double portfolio = shares * 4 + capital;
+  public double portfolio = shares * 15 + capital;
 
   private double minCapitalToShort = 1;
 
@@ -97,14 +97,14 @@ public abstract class BaseTrader extends Agent<Globals> {
   public void shortStock(int volume) {
     //todo: change this back
     //if (canAffordToShortStock(volume)) {
-      shares -= volume;
-      capital += volume * getGlobals().marketPrice;
-      getDoubleAccumulator("shorts").add(volume);
+    shares -= volume;
+    capital += volume * getGlobals().marketPrice;
+    getDoubleAccumulator("shorts").add(volume);
 
-      //Update sell order numbers
-      sellValuesUpdate(volume);
-      updatePortfolioValue();
-   // }
+    //Update sell order numbers
+    sellValuesUpdate(volume);
+    updatePortfolioValue();
+    // }
   }
 
   protected boolean canAffordToShortStock(int volume) {

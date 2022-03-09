@@ -40,8 +40,6 @@ public class MarketMaker extends BaseTrader {
       //todo: fix these since not covering position
       marketMaker.sell(marketMaker.sharesToSell);
       marketMaker.buy(marketMaker.sharesToBuy);
-      System.out.println("shares to sell " + marketMaker.sharesToSell);
-      System.out.println(marketMaker.sharesToBuy);
       marketMaker.sharesToBuy = 0;
       marketMaker.sharesToSell = 0;
     });

@@ -11,16 +11,17 @@ public class FundamentalTrader extends BaseTrader {
     return Action.create(FundamentalTrader.class, consumer);
   }
 
+  private double rsi = 50;
 
   public static Action<FundamentalTrader> processInformation() {
     return action(
         trader -> {
           if (trader.getContext().getTick() > trader.getGlobals().rsiPeriod) {
             int volume = 1; //trader.getRandomInRange(1, (int) trader.shares);
-            double rsi = trader.calculateRSI();
-            if (rsi > trader.getGlobals().overBuyThresh) {
+            trader.rsi = trader.calculateRSI();
+            if (trader.rsi - 10 > trader.getGlobals().overBuyThresh) {
               trader.sell(volume);
-            } else if (rsi < trader.getGlobals().overSellThresh) {
+            } else if (trader.rsi + 10 < trader.getGlobals().overSellThresh) {
               trader.buy(volume);
             }
           }
@@ -30,10 +31,14 @@ public class FundamentalTrader extends BaseTrader {
 
   public static Action<FundamentalTrader> processOptions(){
     return action(trader -> {
-      if (1.2 > trader.getGlobals().overBuyThresh) {
-        trader.buyCallOption(15, trader.getGlobals().marketPrice + 2);
-      } else if (100 < trader.getGlobals().overSellThresh) {
-        //trader.buyPutOption(20, trader.getGlobals().marketPrice);
+      double tradingThresh = trader.getPrng().uniform(0, 1).sample();
+      double probToBuy = trader.getPrng().uniform(0, 1).sample();
+      if (probToBuy < trader.getGlobals().noiseActivity) {
+        if (Math.abs(tradingThresh) > 0.95) {
+          trader.buyCallOption(20, trader.getGlobals().marketPrice * 1.1);
+        } else if (Math.abs(tradingThresh) < 0.05) {
+          trader.buyPutOption(20, trader.getGlobals().marketPrice * 0.9);
+        }
       }
     });
   }
