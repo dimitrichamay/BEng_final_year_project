@@ -43,6 +43,10 @@ public class TradingModel extends AgentBasedModel<Globals> {
 
     marketMakerGroup.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
     noiseTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
+    marketMakerGroup.fullyConnected(fundamentalTraderGroup, Links.TradeLink.class);
+    fundamentalTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
+    marketMakerGroup.fullyConnected(momentumTraderGroup, Links.TradeLink.class);
+    momentumTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
 
     marketMakerGroup.fullyConnected(exchange, Links.TradeLink.class);
     momentumTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
@@ -69,10 +73,20 @@ public class TradingModel extends AgentBasedModel<Globals> {
     run(Exchange.addNetDemand());
     run(Exchange.addTotalDemand());
     run(Exchange.updatePolynomial());
-    run(NoiseTrader.updateOptions());
+    run(
+        Split.create(NoiseTrader.updateOptions(),
+            FundamentalTrader.updateOptions(),
+            MomentumTrader.updateOptions())
+    );
 
-    run(NoiseTrader.processOptions(),
-        MarketMaker.processOptions());
+    run(
+        Split.create(NoiseTrader.processOptions(),
+            FundamentalTrader.processOptions(),
+            MomentumTrader.processOptions()),
+
+        MarketMaker.processOptionSales()
+    );
+
     run(
         Split.create(
             NoiseTrader.processInformation(),

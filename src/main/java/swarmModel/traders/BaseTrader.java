@@ -3,8 +3,10 @@ package swarmModel.traders;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.math3.distribution.NormalDistribution;
+import simudyne.core.abm.Action;
 import simudyne.core.abm.Agent;
 import simudyne.core.annotations.Variable;
+import simudyne.core.functions.SerializableConsumer;
 import swarmModel.Globals;
 import swarmModel.links.Links;
 import swarmModel.links.Links.TradeLink;
@@ -34,8 +36,14 @@ public abstract class BaseTrader extends Agent<Globals> {
 
   private double minCapitalToShort = 1;
 
+  public double sharesToSend = 0;
+
   public List<Option> boughtOptions = new ArrayList<>();
   public List<Option> soldOptions = new ArrayList<>();
+
+  private static Action<BaseTrader> action(SerializableConsumer<BaseTrader> consumer) {
+    return Action.create(BaseTrader.class, consumer);
+  }
 
   public void buy(double volume) {
     if (capital > volume * getGlobals().marketPrice) {
@@ -48,7 +56,9 @@ public abstract class BaseTrader extends Agent<Globals> {
 
   public void buyValuesUpdate(double volume) {
     getDoubleAccumulator("buys").add(volume);
-    getLinks(TradeLink.class).send(BuyOrderPlaced.class);
+    getLinks(TradeLink.class).send(BuyOrderPlaced.class, (msg, link) -> {
+      msg.volume = volume;
+    });
   }
 
   public void sell(double volume) {
@@ -72,7 +82,9 @@ public abstract class BaseTrader extends Agent<Globals> {
 
   public void sellValuesUpdate(double volume) {
     getDoubleAccumulator("sells").add(volume);
-    getLinks(TradeLink.class).send(SellOrderPlaced.class);
+    getLinks(TradeLink.class).send(SellOrderPlaced.class, (msg, link) -> {
+      msg.volume = volume;
+    });
   }
 
   public void updatePortfolioValue() {
@@ -83,7 +95,8 @@ public abstract class BaseTrader extends Agent<Globals> {
 
   // Trader borrows shares and sells them, creating a margin account
   public void shortStock(int volume) {
-    if (canAffordToShortStock(volume)) {
+    //todo: change this back
+    //if (canAffordToShortStock(volume)) {
       shares -= volume;
       capital += volume * getGlobals().marketPrice;
       getDoubleAccumulator("shorts").add(volume);
@@ -91,10 +104,9 @@ public abstract class BaseTrader extends Agent<Globals> {
       //Update sell order numbers
       sellValuesUpdate(volume);
       updatePortfolioValue();
-    }
+   // }
   }
 
-  //todo: check whether this affects option covering!
   protected boolean canAffordToShortStock(int volume) {
     if (shares == 0) {
       return capital >= minCapitalToShort * (volume * getGlobals().marketPrice);
@@ -135,13 +147,54 @@ public abstract class BaseTrader extends Agent<Globals> {
     updatePortfolioValue();
   }
 
+  // Update each Option on every time step
+  public static Action<BaseTrader> updateOptions() {
+    return action(trader -> {
+      double total = 0;
+      if (trader.getContext().getTick() > 0) {
+        List<Option> expiredOptions = new ArrayList<>();
+        for (Option option : trader.boughtOptions) {
+          boolean expired = option.timeStep();
+          if (expired) {
+            double toSend = trader.actOnOption(option);
+            total += toSend;
+            expiredOptions.add(option);
+            if (option.isCallOption()) {
+              trader.callOptions--;
+            } else {
+              trader.putOptions--;
+            }
+          }
+        }
+        trader.boughtOptions.removeAll(expiredOptions);
+      }
+      trader.sharesToSend = total;
+    });
+  }
+
   public double actOnOption(Option option) {
     if (option.isCallOption() && getGlobals().marketPrice > option.getExercisePrice()) {
       capital += (getGlobals().marketPrice - option.getExercisePrice()) * 100;
       updatePortfolioValue();
       return 100;
+    } else if (!option.isCallOption() && getGlobals().marketPrice < option.getExercisePrice()) {
+      capital += (option.getExercisePrice() - getGlobals().marketPrice) * 100;
+      updatePortfolioValue();
+      return -100;
     }
     return 0;
+  }
+
+  public void sendShares() {
+    if (sharesToSend == 0) {
+      return;
+    }
+    if (sharesToSend > 0) {
+      buyValuesUpdate(sharesToSend);
+    } else {
+      sellValuesUpdate(sharesToSend);
+    }
+    sharesToSend = 0;
   }
 
   //Todo: account for time decay in option valuation

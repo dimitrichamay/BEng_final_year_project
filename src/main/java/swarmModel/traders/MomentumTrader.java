@@ -45,7 +45,18 @@ public class MomentumTrader extends BaseTrader {
               trader.sell(volume);
             }
           }
+          trader.sendShares();
         });
+  }
+
+  public static Action<MomentumTrader> processOptions(){
+    return action(trader -> {
+      if (trader.shortTermMovingAvg > trader.longTermMovingAvg) {
+        //trader.buyCallOption(20, trader.getGlobals().marketPrice + 2);
+      } else if (Math.abs(trader.shortTermMovingAvg) < 0.2) {
+        //trader.buyPutOption(20, trader.getGlobals().marketPrice);
+      }
+    });
   }
 
   public static Action<MomentumTrader> updateMarketData() {

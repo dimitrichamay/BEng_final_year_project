@@ -8,6 +8,8 @@ import simudyne.core.abm.Agent;
 import simudyne.core.functions.SerializableConsumer;
 import swarmModel.links.Links;
 import swarmModel.links.Messages;
+import swarmModel.links.Messages.BuyOrderPlaced;
+import swarmModel.links.Messages.SellOrderPlaced;
 import swarmModel.utils.Option;
 
 public class Exchange extends Agent<Globals> {
@@ -26,10 +28,11 @@ public class Exchange extends Agent<Globals> {
   public static Action<Exchange> calculateBuyAndSellPrice() {
     return action(
         exchange -> {
-          int buys = exchange.getMessagesOfType(Messages.BuyOrderPlaced.class).size();
-          int sells = exchange.getMessagesOfType(Messages.SellOrderPlaced.class).size();
+          int buys = exchange.getMessagesOfType(BuyOrderPlaced.class).stream()
+              .mapToInt(order -> (int) order.volume).sum();
+          int sells = exchange.getMessagesOfType(SellOrderPlaced.class).stream()
+              .mapToInt(order -> (int) order.volume).sum();
           exchange.totalDemand = buys + sells;
-
           int netDemand = buys - sells;
           exchange.lastNetDemand = netDemand;
           if (netDemand == 0) {
@@ -39,7 +42,6 @@ public class Exchange extends Agent<Globals> {
                   msg.priceChange = 0;
                 });
           } else {
-
             //initial way to calculate price, to be updated later
             long nbTraders = exchange.getNumberOfTraders();
             double lambda = exchange.getGlobals().lambda;

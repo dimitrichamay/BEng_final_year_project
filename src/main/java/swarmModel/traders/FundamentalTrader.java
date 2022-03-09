@@ -24,7 +24,18 @@ public class FundamentalTrader extends BaseTrader {
               trader.buy(volume);
             }
           }
+          trader.sendShares();
         });
+  }
+
+  public static Action<FundamentalTrader> processOptions(){
+    return action(trader -> {
+      if (1.2 > trader.getGlobals().overBuyThresh) {
+        trader.buyCallOption(15, trader.getGlobals().marketPrice + 2);
+      } else if (100 < trader.getGlobals().overSellThresh) {
+        //trader.buyPutOption(20, trader.getGlobals().marketPrice);
+      }
+    });
   }
 
   public static Action<FundamentalTrader> updateMarketData() {

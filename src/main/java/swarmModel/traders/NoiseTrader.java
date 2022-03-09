@@ -15,7 +15,6 @@ public class NoiseTrader extends BaseTrader {
   @Variable
   public double tradingThresh;
 
-  public double sharesToSend = 0;
 
   // 1 / maxBuyOrSellProportion is the proportion of shares that can be bought or sold at one time
   private double maxBuyOrSellProportion = 3;
@@ -42,44 +41,17 @@ public class NoiseTrader extends BaseTrader {
               trader.sell(volume);
             }
           }
-          trader.buyValuesUpdate(trader.sharesToSend);
-          trader.sellValuesUpdate(trader.sharesToSend);
+          trader.sendShares();
         });
   }
 
   public static Action<NoiseTrader> processOptions(){
     return action(trader -> {
-      if (Math.abs(trader.tradingThresh) > 0.8) {
-        trader.buyCallOption(20, trader.getGlobals().marketPrice - 0.01);
-      } else if (Math.abs(trader.tradingThresh) < 0.2) {
-        trader.buyPutOption(20, trader.getGlobals().marketPrice + 0.01);
+      if (Math.abs(trader.tradingThresh) > 0.9) {
+        trader.buyCallOption(20, trader.getGlobals().marketPrice + 0.01);
+      } else if (Math.abs(trader.tradingThresh) < 0.05) {
+        trader.buyPutOption(20, trader.getGlobals().marketPrice - 0.01);
       }
-    });
-  }
-
-  // Update each Option on every time step
-  public static Action<NoiseTrader> updateOptions() {
-    return action(noiseTrader -> {
-      double total = 0;
-      if (noiseTrader.getContext().getTick() > 0) {
-        List<Option> expiredOptions = new ArrayList<>();
-        for (Option option : noiseTrader.boughtOptions) {
-          boolean expired = option.timeStep();
-          if (expired) {
-            double toSell = noiseTrader.actOnOption(option);
-            total += toSell;
-            expiredOptions.add(option);
-            if (option.isCallOption()) {
-              noiseTrader.callOptions--;
-            } else {
-              noiseTrader.putOptions--;
-            }
-            //System.out.println("Removed option with price " + option.getOptionPrice() + (option.isCallOption() ? "Call Option" : "Put option"));
-          }
-        }
-        noiseTrader.boughtOptions.removeAll(expiredOptions);
-      }
-      noiseTrader.sharesToSend = total;
     });
   }
 

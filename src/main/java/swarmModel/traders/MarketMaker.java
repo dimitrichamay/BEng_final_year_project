@@ -32,19 +32,22 @@ public class MarketMaker extends BaseTrader {
       double predictNetDemand = marketMaker.predictNetDemand();
       if (Math.abs(predictNetDemand / marketMaker.predictTotalDemand()) > maxThreshold) {
         if (predictNetDemand > 0) {
-          marketMaker.sell(Math.round(predictNetDemand * 0.5));
+          marketMaker.sell(Math.round(predictNetDemand * 0.05));
         } else {
-          marketMaker.buy(Math.round((-predictNetDemand) * 0.5));
+          marketMaker.buy(Math.round((-predictNetDemand) * 0.05));
         }
       }
-      marketMaker.shortStock(marketMaker.sharesToSell);
+      //todo: fix these since not covering position
+      marketMaker.sell(marketMaker.sharesToSell);
       marketMaker.buy(marketMaker.sharesToBuy);
+      System.out.println("shares to sell " + marketMaker.sharesToSell);
+      System.out.println(marketMaker.sharesToBuy);
       marketMaker.sharesToBuy = 0;
       marketMaker.sharesToSell = 0;
     });
   }
 
-  public static Action<MarketMaker> processOptions(){
+  public static Action<MarketMaker> processOptionSales() {
     return action(marketMaker -> {
       marketMaker.sellCallOptions();
       marketMaker.sellPutOptions();
