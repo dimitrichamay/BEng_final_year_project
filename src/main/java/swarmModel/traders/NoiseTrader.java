@@ -15,7 +15,6 @@ public class NoiseTrader extends BaseTrader {
   @Variable
   public double tradingThresh;
 
-
   // 1 / maxBuyOrSellProportion is the proportion of shares that can be bought or sold at one time
   private double maxBuyOrSellProportion = 3;
 

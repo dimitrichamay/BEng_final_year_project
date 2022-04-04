@@ -197,7 +197,7 @@ public abstract class BaseTrader extends Agent<Globals> {
     sharesToSend = 0;
   }
 
-  //Todo: account for time decay in option valuation
+  // TODO: account for time decay in option valuation
   public double calculateOptionPortfolioValue() {
     double value = 0;
     for (Option option : boughtOptions) {
@@ -264,5 +264,24 @@ public abstract class BaseTrader extends Agent<Globals> {
   private double getNormalDistribution(double d) {
     NormalDistribution normalDistribution = new NormalDistribution();
     return normalDistribution.cumulativeProbability(d);
+  }
+
+  protected void tradeOnOpinion(double generalOpinion){
+    if (inRange(generalOpinion, 5, 10)){
+      buy(100);
+    }
+    else if (inRange(generalOpinion, 1, 5)){
+      buyCallOption(20, getGlobals().marketPrice * 1.1);
+    }
+    else if (inRange(generalOpinion, -5, -1)){
+      buyPutOption(20, getGlobals().marketPrice * 0.9);
+    } else if (inRange(generalOpinion, -10, -5)) {
+      sell(100);
+    }
+    // Do nothing if opinion is in range (-1, 1)
+  };
+
+  private boolean inRange(double x, int lower, int upper){
+    return x >= lower && x <= upper;
   }
 }

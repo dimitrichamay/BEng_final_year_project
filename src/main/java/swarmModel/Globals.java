@@ -22,6 +22,12 @@ public final class Globals extends GlobalState {
   @Constant(name = "Number of Fundamental Traders")
   public long nbFundamentalTraders = 1000;
 
+  @Constant(name = "Number of Retail Investors")
+  public long nbRetailInvestors = 10000;
+
+  @Constant(name = "Number of Hedge Funds")
+  public long nbHedgeFunds = 50;
+
   @Input(name = "Lambda")
   public double lambda = 10;
 
@@ -59,6 +65,12 @@ public final class Globals extends GlobalState {
   //The number of ticks over which the derivative polynomial is fitted for netDemand
   @Input(name = "Derivative time frame")
   public double derivativeTimeFrame = 10;
+
+  @Input(name = "Time to start opinion sharing")
+  public double timeToStartOpinionSharing = 20;
+
+  @Input(name = "Time to start crash")
+  public double timeToSell = 70;
 
   public Map<Long, Double> historicalPrices = new HashMap<>();
 

@@ -28,4 +28,9 @@ public class Messages {
   }
 
   public static class OptionUpdated extends Message{}
+
+  public static class OpinionShared extends Message {
+    public double opinion;
+  }
+
 }

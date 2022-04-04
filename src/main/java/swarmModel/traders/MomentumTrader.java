@@ -7,9 +7,8 @@ import simudyne.core.functions.SerializableConsumer;
 
 
 /*
-This agent is an example implementation of a moving average trading strategy
+   This agent is an example implementation of a moving average trading strategy
 */
-
 
 public class MomentumTrader extends BaseTrader {
 
@@ -19,7 +18,7 @@ public class MomentumTrader extends BaseTrader {
   @Variable(name = "Short Term Moving Average")
   public double shortTermMovingAvg;
 
-  //Helper function for ease of interpretation
+  // Helper function for ease of interpretation
   private static Action<MomentumTrader> action(SerializableConsumer<MomentumTrader> consumer) {
     return Action.create(MomentumTrader.class, consumer);
   }

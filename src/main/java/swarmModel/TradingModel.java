@@ -1,26 +1,32 @@
 package swarmModel;
 
 import java.util.Map.Entry;
-import java.util.Random;
 import simudyne.core.abm.AgentBasedModel;
 import simudyne.core.abm.Group;
-import simudyne.core.abm.Sequence;
 import simudyne.core.abm.Split;
 import simudyne.core.annotations.ModelSettings;
+import simudyne.core.rng.SeededRandom;
 import swarmModel.links.Links;
+import swarmModel.links.Links.OpinionLink;
 import swarmModel.traders.BaseTrader;
 import swarmModel.traders.FundamentalTrader;
+import swarmModel.traders.HedgeFund;
+import swarmModel.traders.Initiator;
 import swarmModel.traders.MarketMaker;
 import swarmModel.traders.MomentumTrader;
 import swarmModel.traders.NoiseTrader;
+import swarmModel.traders.Reddit;
+import swarmModel.traders.RetailInvestor;
 
-@ModelSettings(macroStep = 100)
+//todo: correct time
+@ModelSettings(macroStep = 100, timeUnit = "DAYS")
 public class TradingModel extends AgentBasedModel<Globals> {
 
   {
     registerAgentTypes(MarketMaker.class, NoiseTrader.class, MomentumTrader.class,
-        FundamentalTrader.class, Exchange.class);
-    registerLinkTypes(Links.TradeLink.class);
+        FundamentalTrader.class, Exchange.class, HedgeFund.class, Initiator.class, Reddit.class,
+        RetailInvestor.class);
+    registerLinkTypes(Links.TradeLink.class, OpinionLink.class);
     createDoubleAccumulator("buys", "Number of buy orders");
     createDoubleAccumulator("sells", "Number of sell orders");
     createDoubleAccumulator("price", "Price");
@@ -40,23 +46,54 @@ public class TradingModel extends AgentBasedModel<Globals> {
     Group<MarketMaker> marketMakerGroup = generateGroup(MarketMaker.class,
         1);
     Group<Exchange> exchange = generateGroup(Exchange.class, 1);
+    //TODO: change these numbers
+    Group<HedgeFund> hedgeFundGroup = generateGroup(HedgeFund.class, getGlobals().nbHedgeFunds);
+    Group<Initiator> initiatorGroup = generateGroup(Initiator.class, 2);
+    Group<Reddit> redditGroup = generateGroup(Reddit.class, 1);
+    Group<RetailInvestor> retailInvestorGroup = generateGroup(RetailInvestor.class,
+        getGlobals().nbRetailInvestors);
 
+    // Setup of trade links
     marketMakerGroup.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
     noiseTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
     marketMakerGroup.fullyConnected(fundamentalTraderGroup, Links.TradeLink.class);
     fundamentalTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
     marketMakerGroup.fullyConnected(momentumTraderGroup, Links.TradeLink.class);
     momentumTraderGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
+    marketMakerGroup.fullyConnected(hedgeFundGroup, Links.TradeLink.class);
+    hedgeFundGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
+    marketMakerGroup.fullyConnected(retailInvestorGroup, Links.TradeLink.class);
+    retailInvestorGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
+    marketMakerGroup.fullyConnected(initiatorGroup, Links.TradeLink.class);
+    initiatorGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
 
     marketMakerGroup.fullyConnected(exchange, Links.TradeLink.class);
     momentumTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
     noiseTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
     fundamentalTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
+    hedgeFundGroup.fullyConnected(exchange, Links.TradeLink.class);
+    retailInvestorGroup.fullyConnected(exchange, Links.TradeLink.class);
+    initiatorGroup.fullyConnected(exchange, Links.TradeLink.class);
 
     exchange.fullyConnected(momentumTraderGroup, Links.TradeLink.class);
     exchange.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
     exchange.fullyConnected(fundamentalTraderGroup, Links.TradeLink.class);
     exchange.fullyConnected(marketMakerGroup, Links.TradeLink.class);
+    exchange.fullyConnected(hedgeFundGroup, Links.TradeLink.class);
+    exchange.fullyConnected(retailInvestorGroup, Links.TradeLink.class);
+    exchange.fullyConnected(initiatorGroup, Links.TradeLink.class);
+
+    // Setup of Opinion Links
+    redditGroup.fullyConnected(retailInvestorGroup, Links.OpinionLink.class);
+    redditGroup.fullyConnected(initiatorGroup, Links.OpinionLink.class);
+    redditGroup.fullyConnected(hedgeFundGroup, Links.OpinionLink.class);
+
+    retailInvestorGroup.fullyConnected(initiatorGroup, Links.OpinionLink.class);
+    initiatorGroup.fullyConnected(retailInvestorGroup, Links.OpinionLink.class);
+
+    retailInvestorGroup.fullyConnected(redditGroup, Links.OpinionLink.class);
+    initiatorGroup.fullyConnected(redditGroup, Links.OpinionLink.class);
+    hedgeFundGroup.fullyConnected(redditGroup, Links.OpinionLink.class);
 
     super.setup();
   }
@@ -92,7 +129,9 @@ public class TradingModel extends AgentBasedModel<Globals> {
             NoiseTrader.processInformation(),
             MomentumTrader.processInformation(),
             FundamentalTrader.processInformation(),
-            MarketMaker.processInformation()),
+            MarketMaker.processInformation(),
+            RetailInvestor.processInformation(),
+            Initiator.processInformation()),
 
         Exchange.calculateBuyAndSellPrice(),
 
@@ -100,7 +139,8 @@ public class TradingModel extends AgentBasedModel<Globals> {
             NoiseTrader.updateThreshold(),
             MomentumTrader.updateMarketData(),
             FundamentalTrader.updateMarketData(),
-            MarketMaker.updateMarketData())
+            MarketMaker.updateMarketData(),
+            RetailInvestor.updateOpinions())
     );
   }
 
@@ -123,8 +163,8 @@ public class TradingModel extends AgentBasedModel<Globals> {
   /* Wiener rate has gaussian increments, ie W_t+u - W_t ~ N(0, u). We take u to be 1 here since every
    *  time we update the interest rate we want to model this as a single time step in the model*/
   private double getWienerRate() {
-    Random r = new Random();
-    return r.nextGaussian();
+    SeededRandom r = getContext().getPrng();
+    return r.generator.nextGaussian();
   }
 
   //todo: fix this volatility measure so stops giving 0
