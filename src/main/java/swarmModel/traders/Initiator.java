@@ -12,28 +12,26 @@ import swarmModel.links.Messages.OpinionShared;
 public class Initiator extends BaseTrader {
 
   @Variable
-  public double opinion = 10;
-
+  public double opinion = 20;
 
 
   private static Action<Initiator> action(SerializableConsumer<Initiator> consumer) {
     return Action.create(Initiator.class, consumer);
   }
 
-  public static Action<Initiator> processInformation() {
+  public static Action<Initiator> shareOpinion() {
     return action(
         trader -> {
-          if (trader.getContext().getTick() > trader.getGlobals().timeToStartOpinionSharing
-              && trader.getContext().getTick() < trader.getGlobals().timeToSell) {
+          if (trader.getContext().getTick() < trader.getGlobals().timeToSell) {
             trader.getLinks(OpinionLink.class).send(OpinionShared.class, (msg, link) ->
             {
               msg.opinion = trader.opinion;
             });
           }
-          if (trader.getContext().getTick() > trader.getGlobals().timeToSell){
+          if (trader.getContext().getTick() > trader.getGlobals().timeToSell) {
             trader.getLinks(OpinionLink.class).send(OpinionShared.class, (msg, link) ->
             {
-              msg.opinion = -10;
+              msg.opinion = -15;
             });
           }
         });

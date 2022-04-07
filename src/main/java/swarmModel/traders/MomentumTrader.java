@@ -62,12 +62,6 @@ public class MomentumTrader extends BaseTrader {
     });
   }
 
-  public static Action<MomentumTrader> updateMarketData() {
-    return action(
-        trader -> {
-
-        });
-  }
 
   public double getTermMovingAvg(long nbDays, Map<Long, Double> historicalPrices) {
     double totalPrice = historicalPrices.entrySet().stream()

@@ -8,23 +8,21 @@ import simudyne.core.annotations.ModelSettings;
 import simudyne.core.rng.SeededRandom;
 import swarmModel.links.Links;
 import swarmModel.links.Links.OpinionLink;
-import swarmModel.traders.BaseTrader;
 import swarmModel.traders.FundamentalTrader;
 import swarmModel.traders.HedgeFund;
 import swarmModel.traders.Initiator;
 import swarmModel.traders.MarketMaker;
 import swarmModel.traders.MomentumTrader;
 import swarmModel.traders.NoiseTrader;
-import swarmModel.traders.Reddit;
 import swarmModel.traders.RetailInvestor;
 
 //todo: correct time
-@ModelSettings(macroStep = 100, timeUnit = "DAYS")
+@ModelSettings(macroStep = 100, timeUnit = "DAYS", start = "2021-01-01T00:00:00Z", id = "GME_squeeze")
 public class TradingModel extends AgentBasedModel<Globals> {
 
   {
     registerAgentTypes(MarketMaker.class, NoiseTrader.class, MomentumTrader.class,
-        FundamentalTrader.class, Exchange.class, HedgeFund.class, Initiator.class, Reddit.class,
+        FundamentalTrader.class, Exchange.class, HedgeFund.class, Initiator.class,
         RetailInvestor.class);
     registerLinkTypes(Links.TradeLink.class, OpinionLink.class);
     createDoubleAccumulator("buys", "Number of buy orders");
@@ -48,8 +46,7 @@ public class TradingModel extends AgentBasedModel<Globals> {
     Group<Exchange> exchange = generateGroup(Exchange.class, 1);
     //TODO: change these numbers
     Group<HedgeFund> hedgeFundGroup = generateGroup(HedgeFund.class, getGlobals().nbHedgeFunds);
-    Group<Initiator> initiatorGroup = generateGroup(Initiator.class, 2);
-    Group<Reddit> redditGroup = generateGroup(Reddit.class, 1);
+    Group<Initiator> initiatorGroup = generateGroup(Initiator.class, getGlobals().nbInitiators);
     Group<RetailInvestor> retailInvestorGroup = generateGroup(RetailInvestor.class,
         getGlobals().nbRetailInvestors);
 
@@ -71,29 +68,27 @@ public class TradingModel extends AgentBasedModel<Globals> {
     momentumTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
     noiseTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
     fundamentalTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
-    hedgeFundGroup.fullyConnected(exchange, Links.TradeLink.class);
+    //hedgeFundGroup.fullyConnected(exchange, Links.TradeLink.class);
     retailInvestorGroup.fullyConnected(exchange, Links.TradeLink.class);
-    initiatorGroup.fullyConnected(exchange, Links.TradeLink.class);
+    // initiatorGroup.fullyConnected(exchange, Links.TradeLink.class);
 
     exchange.fullyConnected(momentumTraderGroup, Links.TradeLink.class);
     exchange.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
     exchange.fullyConnected(fundamentalTraderGroup, Links.TradeLink.class);
     exchange.fullyConnected(marketMakerGroup, Links.TradeLink.class);
-    exchange.fullyConnected(hedgeFundGroup, Links.TradeLink.class);
+    //exchange.fullyConnected(hedgeFundGroup, Links.TradeLink.class);
     exchange.fullyConnected(retailInvestorGroup, Links.TradeLink.class);
-    exchange.fullyConnected(initiatorGroup, Links.TradeLink.class);
+    //exchange.fullyConnected(initiatorGroup, Links.TradeLink.class);
 
     // Setup of Opinion Links
-    redditGroup.fullyConnected(retailInvestorGroup, Links.OpinionLink.class);
-    redditGroup.fullyConnected(initiatorGroup, Links.OpinionLink.class);
-    redditGroup.fullyConnected(hedgeFundGroup, Links.OpinionLink.class);
 
-    retailInvestorGroup.fullyConnected(initiatorGroup, Links.OpinionLink.class);
-    initiatorGroup.fullyConnected(retailInvestorGroup, Links.OpinionLink.class);
+    retailInvestorGroup.gridConnected(Links.OpinionLink.class).width(2);
+    initiatorGroup.partitionConnected(retailInvestorGroup, Links.OpinionLink.class).shard();
 
-    retailInvestorGroup.fullyConnected(redditGroup, Links.OpinionLink.class);
-    initiatorGroup.fullyConnected(redditGroup, Links.OpinionLink.class);
-    hedgeFundGroup.fullyConnected(redditGroup, Links.OpinionLink.class);
+    initiatorGroup.fullyConnected(noiseTraderGroup, Links.OpinionLink.class);
+    initiatorGroup.fullyConnected(momentumTraderGroup, Links.OpinionLink.class);
+    initiatorGroup.fullyConnected(fundamentalTraderGroup, Links.OpinionLink.class);
+    initiatorGroup.fullyConnected(marketMakerGroup, Links.OpinionLink.class);
 
     super.setup();
   }
@@ -126,21 +121,18 @@ public class TradingModel extends AgentBasedModel<Globals> {
 
     run(
         Split.create(
+            RetailInvestor.shareOpinion(),
+            Initiator.shareOpinion()),
+
+        Split.create(
             NoiseTrader.processInformation(),
             MomentumTrader.processInformation(),
             FundamentalTrader.processInformation(),
             MarketMaker.processInformation(),
-            RetailInvestor.processInformation(),
-            Initiator.processInformation()),
+            RetailInvestor.processInformation()),
 
         Exchange.calculateBuyAndSellPrice(),
-
-        Split.create(
-            NoiseTrader.updateThreshold(),
-            MomentumTrader.updateMarketData(),
-            FundamentalTrader.updateMarketData(),
-            MarketMaker.updateMarketData(),
-            RetailInvestor.updateOpinions())
+        NoiseTrader.updateThreshold()
     );
   }
 

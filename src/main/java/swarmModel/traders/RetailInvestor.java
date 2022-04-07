@@ -17,14 +17,23 @@ public class RetailInvestor extends BaseTrader {
 
   RandomGenerator random;
 
+  // The number of opinions used to determine new opinion of each person
+  private final double initialNumberOfAffecting = 5;
+
   @Override
   public void init() {
     random = this.getPrng().generator;
-    opinion = getPrng().uniform(-2, 2).sample();
+    opinion = getPrng().uniform(-2, 4).sample();
   }
 
   private static Action<RetailInvestor> action(SerializableConsumer<RetailInvestor> consumer) {
     return Action.create(RetailInvestor.class, consumer);
+  }
+
+  public static Action<RetailInvestor> shareOpinion() {
+    // Opinions will be ignored by processInformation until it is time to start sharing opinion
+    return action(trader -> trader.getLinks(OpinionLink.class)
+        .send(OpinionShared.class, (msg, link) -> msg.opinion = trader.opinion));
   }
 
   public static Action<RetailInvestor> processInformation() {
@@ -33,31 +42,20 @@ public class RetailInvestor extends BaseTrader {
         if (trader.isTrading()) {
           trader.tradeOnOpinion(trader.opinion);
         }
-        trader.getLinks(OpinionLink.class).send(OpinionShared.class, (msg, link) -> {
-          msg.opinion = trader.opinion;
-        });
-      }
-    });
-  }
-
-  public static Action<RetailInvestor> updateOpinions() {
-    return action(trader -> {
-      if (trader.getContext().getTick() > trader.getGlobals().timeToStartOpinionSharing) {
-        int size = trader.getMessagesOfType(Messages.OpinionShared.class).size();
-        int affecting = (int) Math
-            .min(trader.getContext().getTick() - trader.getGlobals().timeToStartOpinionSharing + 1,
-                size);
         double generalOpinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
-            .mapToDouble(opinion -> opinion.opinion).limit(affecting).average().orElse(0);
-        if (generalOpinion != 0){
-          trader.opinion = generalOpinion;
+            .mapToDouble(opinion -> opinion.opinion).average().orElse(0);
+        if (generalOpinion != 0 && trader.getContext().getTick() % 3 == 0) {
+          /* Updated trader opinion is an average between their own opinion and those around them
+             every 3 time steps */
+          trader.opinion = (generalOpinion + trader.opinion) / 2;
         }
       }
     });
   }
 
   private boolean isTrading() {
-    return getPrng().uniform(0, 1).sample() > 0.85;
+    // TODO: update this as wanted
+    return getPrng().uniform(0, 1).sample() > 0;
   }
 
   public static Action<RetailInvestor> processOptions() {

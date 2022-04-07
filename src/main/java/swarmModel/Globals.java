@@ -25,6 +25,9 @@ public final class Globals extends GlobalState {
   @Constant(name = "Number of Retail Investors")
   public long nbRetailInvestors = 10000;
 
+  @Constant(name = "Number of intitiators")
+  public long nbInitiators = 10;
+
   @Constant(name = "Number of Hedge Funds")
   public long nbHedgeFunds = 50;
 
