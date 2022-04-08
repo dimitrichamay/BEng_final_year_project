@@ -43,13 +43,6 @@ public class FundamentalTrader extends BaseTrader {
     });
   }
 
-  public static Action<FundamentalTrader> updateMarketData() {
-    return action(
-        trader -> {
-
-        });
-  }
-
 
   public double calculateRSI() {
     double[] histPrices = new double[(int) getGlobals().rsiPeriod];

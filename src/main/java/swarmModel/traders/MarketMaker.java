@@ -15,9 +15,13 @@ import swarmModel.utils.Option;
 
 public class MarketMaker extends BaseTrader {
 
-  private static final double maxThreshold = 0.05;
+  private static final double maxThreshold = 0.5;
 
   private static final double nbStepsPrediction = 5;
+
+  private final double priceToStartCoverPos = initialMarketPrice * 1.5;
+  private final double priceToCoverHalfPos = initialMarketPrice * 3;
+  private final double priceToCoverPos = initialMarketPrice * 5;
 
   private int sharesToBuy = 0;
   private int sharesToSell = 0;
@@ -30,18 +34,22 @@ public class MarketMaker extends BaseTrader {
   public static Action<MarketMaker> processInformation() {
     return action(marketMaker -> {
       double predictNetDemand = marketMaker.predictNetDemand();
+      // Adds liquidity on other side of the market if large disparity in demand
       if (Math.abs(predictNetDemand / marketMaker.predictTotalDemand()) > maxThreshold) {
+        long compensation = Math.round(Math.abs(predictNetDemand) * 0.01);
         if (predictNetDemand > 0) {
-          marketMaker.sell(Math.round(predictNetDemand * 0.05));
+          marketMaker.sell(compensation);
         } else {
-          marketMaker.buy(Math.round((-predictNetDemand) * 0.05));
+          marketMaker.buy(compensation);
         }
       }
-      //todo: fix these since not covering position
+
       marketMaker.sell(marketMaker.sharesToSell);
       marketMaker.buy(marketMaker.sharesToBuy);
       marketMaker.sharesToBuy = 0;
       marketMaker.sharesToSell = 0;
+
+      marketMaker.coverShortIfNecessary();
     });
   }
 
@@ -77,14 +85,24 @@ public class MarketMaker extends BaseTrader {
         .value(getContext().getTick());
   }
 
-  public static Action<MarketMaker> updateMarketData() {
-    return action(marketMaker -> {
-    });
+  /* If the net demand is expected to be > 0, from the price dynamics we
+     therefore also expect the price to increase */
+  private boolean priceIncreasePredicted() {
+    return predictNetDemand() > 0;
   }
 
   private long getNumberOfTraders() {
     return getGlobals().nbFundamentalTraders + getGlobals().nbNoiseTraders
         + getGlobals().nbMomentumTraders;
+  }
+
+  @Override
+  public void buy(double volume) {
+    // Still want to be able to buy even if has no capital since is market maker and can make losses
+    shares += volume;
+    capital -= volume * getGlobals().marketPrice;
+    buyValuesUpdate(volume);
+    updatePortfolioValue();
   }
 
   /*********** OPTION SELLING **********/
@@ -94,8 +112,7 @@ public class MarketMaker extends BaseTrader {
       Option option = putOptionBought.option;
       soldOptions.add(option);
       capital += option.getOptionPrice();
-      //Todo: can change covering option every single time
-      sharesToSell += 100;
+      sharesToSell += 10;
     });
   }
 
@@ -104,9 +121,23 @@ public class MarketMaker extends BaseTrader {
       Option option = callOptionBought.option;
       soldOptions.add(option);
       capital += option.getOptionPrice();
-      //Todo: can change covering option every single time
-      sharesToBuy += 100;
+      sharesToBuy += 10;
     });
   }
 
+  private void coverShortIfNecessary() {
+    if (shares < 0) {
+      if (getGlobals().marketPrice > priceToCoverPos && priceIncreasePredicted()) {
+        coverPosition(1);
+      } else if (getGlobals().marketPrice > priceToCoverHalfPos && priceIncreasePredicted()) {
+        coverPosition(0.5);
+      } else if (getGlobals().marketPrice > priceToStartCoverPos && priceIncreasePredicted()) {
+        coverPosition(0.25);
+      }
+    }
+  }
+
+  private void coverPosition(double proportionToCover) {
+    buy(Math.abs(shares) * proportionToCover);
+  }
 }

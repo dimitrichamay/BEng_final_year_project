@@ -19,7 +19,7 @@ import swarmModel.utils.Option.type;
 public abstract class BaseTrader extends Agent<Globals> {
 
   @Variable
-  public double capital = 100;
+  public double capital = 10000;
 
   @Variable
   public double shares = 0;
@@ -37,6 +37,8 @@ public abstract class BaseTrader extends Agent<Globals> {
   private double minCapitalToShort = 1;
 
   public double sharesToSend = 0;
+  protected final double initialMarketPrice = 15;
+
 
   public List<Option> boughtOptions = new ArrayList<>();
   public List<Option> soldOptions = new ArrayList<>();
@@ -46,12 +48,13 @@ public abstract class BaseTrader extends Agent<Globals> {
   }
 
   public void buy(double volume) {
-    if (capital > volume * getGlobals().marketPrice) {
-      shares += volume;
-      capital -= volume * getGlobals().marketPrice;
-      buyValuesUpdate(volume);
-      updatePortfolioValue();
-    }
+    // TODO: allow negative capital?
+    //if (capital > volume * getGlobals().marketPrice) {
+    shares += volume;
+    capital -= volume * getGlobals().marketPrice;
+    buyValuesUpdate(volume);
+    updatePortfolioValue();
+
   }
 
   public void buyValuesUpdate(double volume) {
@@ -82,9 +85,7 @@ public abstract class BaseTrader extends Agent<Globals> {
 
   public void sellValuesUpdate(double volume) {
     getDoubleAccumulator("sells").add(volume);
-    getLinks(TradeLink.class).send(SellOrderPlaced.class, (msg, link) -> {
-      msg.volume = volume;
-    });
+    getLinks(TradeLink.class).send(SellOrderPlaced.class, (msg, link) -> msg.volume = volume);
   }
 
   public void updatePortfolioValue() {
@@ -122,7 +123,7 @@ public abstract class BaseTrader extends Agent<Globals> {
 
   /******************* Options Trading ******************/
 
-  // Each option is valid for 100 shares of the stock
+  // Each option is valid for 10 shares of the stock (used to simplify values instead of 100)
   public void buyPutOption(int expiryTime, double exercisePrice) {
     Option option = new Option(expiryTime, exercisePrice, type.PUT);
     initiateOptionPrice(option);
@@ -174,13 +175,13 @@ public abstract class BaseTrader extends Agent<Globals> {
 
   public double actOnOption(Option option) {
     if (option.isCallOption() && getGlobals().marketPrice > option.getExercisePrice()) {
-      capital += (getGlobals().marketPrice - option.getExercisePrice()) * 100;
+      capital += (getGlobals().marketPrice - option.getExercisePrice()) * 10;
       updatePortfolioValue();
-      return 100;
+      return 10;
     } else if (!option.isCallOption() && getGlobals().marketPrice < option.getExercisePrice()) {
-      capital += (option.getExercisePrice() - getGlobals().marketPrice) * 100;
+      capital += (option.getExercisePrice() - getGlobals().marketPrice) * 10;
       updatePortfolioValue();
-      return -100;
+      return -10;
     }
     return 0;
   }
@@ -190,35 +191,35 @@ public abstract class BaseTrader extends Agent<Globals> {
       return;
     }
     if (sharesToSend > 0) {
-      buyValuesUpdate(sharesToSend);
+      buyValuesUpdate(Math.abs(sharesToSend));
     } else {
-      sellValuesUpdate(sharesToSend);
+      sellValuesUpdate(Math.abs(sharesToSend));
     }
     sharesToSend = 0;
   }
 
-  //Todo: account for time decay in option valuation
+  // TODO: account for time decay in option valuation
   public double calculateOptionPortfolioValue() {
     double value = 0;
     for (Option option : boughtOptions) {
       if (option.isCallOption()) {
         value += Math.max(
-            (getGlobals().marketPrice - option.getExercisePrice()) * 100,
+            (getGlobals().marketPrice - option.getExercisePrice()) * 10,
             0);
       } else {
         value += Math.max(
-            (option.getExercisePrice() - getGlobals().marketPrice) * 100,
+            (option.getExercisePrice() - getGlobals().marketPrice) * 10,
             0);
       }
     }
     for (Option option : soldOptions) {
       if (option.isCallOption()) {
         value -= Math.max(
-            (getGlobals().marketPrice - option.getExercisePrice()) * 100,
+            (getGlobals().marketPrice - option.getExercisePrice()) * 10,
             0);
       } else {
         value -= Math.max(
-            (option.getExercisePrice() - getGlobals().marketPrice) * 100,
+            (option.getExercisePrice() - getGlobals().marketPrice) * 10,
             0);
       }
     }
@@ -248,21 +249,49 @@ public abstract class BaseTrader extends Agent<Globals> {
             + (r + Math.pow(getGlobals().volatility, 2)) * timeToExpiry);
     double d2 = d1 - getGlobals().volatility * timeToExpiry;
     if (option.isCallOption()) {
-      option.setOptionPrice(stockPrice * getNormalDistribution(d1)
+      option.setOptionPrice((stockPrice * getNormalDistribution(d1)
           - exercisePrice * Math.exp(-r * timeToExpiry)
-          * getNormalDistribution(d2));
+          * getNormalDistribution(d2)) / 10);
     } else {
       /*option.setOptionPrice(getNormalDistribution(-d2) * exercisePrice
           * Math.exp(-r * timeToExpiry)
           - getNormalDistribution(-d1) * stockPrice);*/
-      option.setOptionPrice(stockPrice * getNormalDistribution(d1)
+      option.setOptionPrice((stockPrice * getNormalDistribution(d1)
           - exercisePrice * Math.exp(-r * timeToExpiry)
-          * getNormalDistribution(d2));
+          * getNormalDistribution(d2)) / 10);
     }
   }
 
   private double getNormalDistribution(double d) {
     NormalDistribution normalDistribution = new NormalDistribution();
     return normalDistribution.cumulativeProbability(d);
+  }
+
+  /******************* Opinion Dynamics ******************/
+
+  protected void tradeOnOpinion(double generalOpinion) {
+    if (generalOpinion > 12) {
+      buy(3);
+      buyCallOption(15, getGlobals().marketPrice * 1.1);
+    } else if (generalOpinion > 7) {
+      buy(1);
+      buyCallOption(10, getGlobals().marketPrice * 1.1);
+    } else if (inRange(generalOpinion, 1, 7)) {
+      buy(1);
+    } else if (inRange(generalOpinion, -7, -1)) {
+      sell(1);
+    } else if (generalOpinion < -12) {
+      sell(3);
+    } else if (generalOpinion < -7) {
+      sell(1);
+      buyPutOption(10, getGlobals().marketPrice * 0.9);
+    }
+    // Do nothing if opinion is in range (-1, 1) as neutral position
+  }
+
+  ;
+
+  private boolean inRange(double x, int lower, int upper) {
+    return x >= lower && x <= upper;
   }
 }

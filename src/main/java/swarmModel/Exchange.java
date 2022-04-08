@@ -34,6 +34,7 @@ public class Exchange extends Agent<Globals> {
               .mapToInt(order -> (int) order.volume).sum();
           exchange.totalDemand = buys + sells;
           int netDemand = buys - sells;
+
           exchange.lastNetDemand = netDemand;
           if (netDemand == 0) {
             exchange.getLinks(Links.TradeLink.class)
