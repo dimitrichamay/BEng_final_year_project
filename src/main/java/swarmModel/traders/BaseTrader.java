@@ -19,7 +19,7 @@ import swarmModel.utils.Option.type;
 public abstract class BaseTrader extends Agent<Globals> {
 
   @Variable
-  public double capital = 1000;
+  public double capital = 10000;
 
   @Variable
   public double shares = 0;
@@ -37,6 +37,8 @@ public abstract class BaseTrader extends Agent<Globals> {
   private double minCapitalToShort = 1;
 
   public double sharesToSend = 0;
+  protected final double initialMarketPrice = 15;
+
 
   public List<Option> boughtOptions = new ArrayList<>();
   public List<Option> soldOptions = new ArrayList<>();
@@ -46,12 +48,13 @@ public abstract class BaseTrader extends Agent<Globals> {
   }
 
   public void buy(double volume) {
-    if (capital > volume * getGlobals().marketPrice) {
-      shares += volume;
-      capital -= volume * getGlobals().marketPrice;
-      buyValuesUpdate(volume);
-      updatePortfolioValue();
-    }
+    // TODO: allow negative capital?
+    //if (capital > volume * getGlobals().marketPrice) {
+    shares += volume;
+    capital -= volume * getGlobals().marketPrice;
+    buyValuesUpdate(volume);
+    updatePortfolioValue();
+
   }
 
   public void buyValuesUpdate(double volume) {
@@ -269,6 +272,7 @@ public abstract class BaseTrader extends Agent<Globals> {
   protected void tradeOnOpinion(double generalOpinion) {
     if (generalOpinion > 12) {
       buy(3);
+      buyCallOption(15, getGlobals().marketPrice * 1.1);
     } else if (generalOpinion > 7) {
       buy(1);
       buyCallOption(10, getGlobals().marketPrice * 1.1);

@@ -19,7 +19,6 @@ public class MarketMaker extends BaseTrader {
 
   private static final double nbStepsPrediction = 5;
 
-  private final double initialMarketPrice = 15;
   private final double priceToStartCoverPos = initialMarketPrice * 1.5;
   private final double priceToCoverHalfPos = initialMarketPrice * 3;
   private final double priceToCoverPos = initialMarketPrice * 5;

@@ -7,7 +7,8 @@ import simudyne.core.functions.SerializableConsumer;
    having to cover this position as the price increases */
 public class HedgeFund extends BaseTrader{
 
-  private final double initialShortTime = 5;
+  private final double shortingPhase = 3;
+  private boolean secondShort = false;
 
   private static Action<HedgeFund> action(SerializableConsumer<HedgeFund> consumer) {
     return Action.create(HedgeFund.class, consumer);
@@ -15,8 +16,17 @@ public class HedgeFund extends BaseTrader{
 
   public static Action<HedgeFund> processInformation(){
     return action(trader ->{
-      if (trader.getContext().getTick() == 5){
-        trader.shortStock(100);
+      if (trader.getContext().getTick() < trader.shortingPhase){
+        trader.sell(500);
+      }
+      // Second short selling to try and make the market fall
+      if (trader.getGlobals().marketPrice > 2 * trader.initialMarketPrice && !trader.secondShort){
+        trader.sell(1000);
+        trader.secondShort = true;
+      }
+      // Cover position if the stock carries on increasing to minimise loss
+      if (trader.getGlobals().marketPrice > 3 * trader.initialMarketPrice){
+        trader.buy(Math.abs(trader.shares));
       }
     });
   }

@@ -16,8 +16,7 @@ import swarmModel.traders.MomentumTrader;
 import swarmModel.traders.NoiseTrader;
 import swarmModel.traders.RetailInvestor;
 
-//todo: correct time
-@ModelSettings(macroStep = 100, timeUnit = "DAYS", start = "2021-01-01T00:00:00Z", id = "GME_squeeze")
+@ModelSettings(macroStep = 150, timeUnit = "DAYS", start = "2021-01-01T00:00:00Z", id = "GME_squeeze")
 public class TradingModel extends AgentBasedModel<Globals> {
 
   {
@@ -68,7 +67,7 @@ public class TradingModel extends AgentBasedModel<Globals> {
     momentumTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
     noiseTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
     fundamentalTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
-    //hedgeFundGroup.fullyConnected(exchange, Links.TradeLink.class);
+    hedgeFundGroup.fullyConnected(exchange, Links.TradeLink.class);
     retailInvestorGroup.fullyConnected(exchange, Links.TradeLink.class);
     // initiatorGroup.fullyConnected(exchange, Links.TradeLink.class);
 
@@ -76,7 +75,7 @@ public class TradingModel extends AgentBasedModel<Globals> {
     exchange.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
     exchange.fullyConnected(fundamentalTraderGroup, Links.TradeLink.class);
     exchange.fullyConnected(marketMakerGroup, Links.TradeLink.class);
-    //exchange.fullyConnected(hedgeFundGroup, Links.TradeLink.class);
+    exchange.fullyConnected(hedgeFundGroup, Links.TradeLink.class);
     exchange.fullyConnected(retailInvestorGroup, Links.TradeLink.class);
     //exchange.fullyConnected(initiatorGroup, Links.TradeLink.class);
 
@@ -89,6 +88,7 @@ public class TradingModel extends AgentBasedModel<Globals> {
     initiatorGroup.fullyConnected(momentumTraderGroup, Links.OpinionLink.class);
     initiatorGroup.fullyConnected(fundamentalTraderGroup, Links.OpinionLink.class);
     initiatorGroup.fullyConnected(marketMakerGroup, Links.OpinionLink.class);
+    initiatorGroup.fullyConnected(hedgeFundGroup, Links.OpinionLink.class);
 
     super.setup();
   }
@@ -129,7 +129,8 @@ public class TradingModel extends AgentBasedModel<Globals> {
             MomentumTrader.processInformation(),
             FundamentalTrader.processInformation(),
             MarketMaker.processInformation(),
-            RetailInvestor.processInformation()),
+            RetailInvestor.processInformation(),
+            HedgeFund.processInformation()),
 
         Exchange.calculateBuyAndSellPrice(),
         NoiseTrader.updateThreshold()

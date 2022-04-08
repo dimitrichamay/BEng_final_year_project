@@ -17,9 +17,6 @@ public class RetailInvestor extends BaseTrader {
 
   RandomGenerator random;
 
-  // The number of opinions used to determine new opinion of each person
-  private final double initialNumberOfAffecting = 5;
-
   @Override
   public void init() {
     random = this.getPrng().generator;
@@ -54,8 +51,7 @@ public class RetailInvestor extends BaseTrader {
   }
 
   private boolean isTrading() {
-    // TODO: update this as wanted
-    return getPrng().uniform(0, 1).sample() > 0;
+    return getPrng().uniform(0, 1).sample() > 0.4;
   }
 
   public static Action<RetailInvestor> processOptions() {

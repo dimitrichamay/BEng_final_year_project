@@ -1,12 +1,9 @@
 package swarmModel.traders;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.commons.math3.random.RandomGenerator;
 import simudyne.core.abm.Action;
 import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
-import swarmModel.utils.Option;
 
 public class NoiseTrader extends BaseTrader {
 
@@ -14,9 +11,6 @@ public class NoiseTrader extends BaseTrader {
   RandomGenerator random;
   @Variable
   public double tradingThresh;
-
-  // 1 / maxBuyOrSellProportion is the proportion of shares that can be bought or sold at one time
-  private double maxBuyOrSellProportion = 3;
 
   @Override
   public void init() {
@@ -31,7 +25,7 @@ public class NoiseTrader extends BaseTrader {
   public static Action<NoiseTrader> processInformation() {
     return action(
         trader -> {
-          int volume = 1; //trader.getRandomInRange(1, (int) Math.floor(trader.shares / trader.maxBuyOrSellProportion));
+          int volume = 1;
           double probToBuy = trader.getPrng().uniform(0, 1).sample();
           if (probToBuy < trader.getGlobals().noiseActivity) {
             if (Math.abs(trader.tradingThresh) > 0.5) {
@@ -47,9 +41,6 @@ public class NoiseTrader extends BaseTrader {
   public static Action<NoiseTrader> processOptions(){
     return action(trader -> {
       double probToBuy = trader.getPrng().uniform(0, 1).sample();
-      /*if (trader.getContext().getTick() > 30){
-        trader.buyCallOption(20, trader.getGlobals().marketPrice * 1.1);
-      }*/
       if (probToBuy < trader.getGlobals().noiseActivity) {
         if (Math.abs(trader.tradingThresh) > 0.95) {
           trader.buyCallOption(20, trader.getGlobals().marketPrice * 1.1);

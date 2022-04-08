@@ -1,8 +1,6 @@
 package swarmModel;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import simudyne.core.abm.GlobalState;
 import simudyne.core.annotations.Constant;
@@ -26,7 +24,7 @@ public final class Globals extends GlobalState {
   public long nbRetailInvestors = 10000;
 
   @Constant(name = "Number of intitiators")
-  public long nbInitiators = 10;
+  public long nbInitiators = 5;
 
   @Constant(name = "Number of Hedge Funds")
   public long nbHedgeFunds = 50;
@@ -53,7 +51,7 @@ public final class Globals extends GlobalState {
   public double overSellThresh = 30.0;
 
   @Input(name = "Custom Momentum Trader Activity")
-  public double traderActivity = 0.1;
+  public double traderActivity = 0.2;
 
   @Input(name = "Custom noise trader activity")
   public double noiseActivity = 0.4;
@@ -70,10 +68,10 @@ public final class Globals extends GlobalState {
   public double derivativeTimeFrame = 10;
 
   @Input(name = "Time to start opinion sharing")
-  public double timeToStartOpinionSharing = 20;
+  public double timeToStartOpinionSharing = 15;
 
   @Input(name = "Time to start crash")
-  public double timeToSell = 70;
+  public double timeToSell = 100;
 
   public Map<Long, Double> historicalPrices = new HashMap<>();
 
