@@ -27,6 +27,7 @@ public class MomentumTrader extends BaseTrader {
   public static Action<MomentumTrader> processInformation() {
     return action(
         trader -> {
+          //todo: alter how many shares are bought/sold depending on momentum
           if (trader.getContext().getTick() > trader.getGlobals().longTermAverage) {
             trader.longTermMovingAvg = trader
                 .getTermMovingAvg(trader.getGlobals().longTermAverage,
@@ -36,21 +37,12 @@ public class MomentumTrader extends BaseTrader {
                     trader.getGlobals().historicalPrices);
             double probToBuy = trader.getPrng().uniform(0, 1).sample();
 
-            int volume = 1;
             if (trader.shortTermMovingAvg > trader.longTermMovingAvg && probToBuy < trader
                 .getGlobals().traderActivity) {
-              trader.buy(volume);
-              // If significant movement buy a lot more
-              if (trader.shortTermMovingAvg > 1.1 * trader.longTermMovingAvg){
-                trader.buy(10);
-              }
+              trader.buy(trader.getGlobals().stdVolume);
             } else if ((trader.shortTermMovingAvg < trader.longTermMovingAvg && probToBuy < trader
                 .getGlobals().traderActivity)) {
-              trader.sell(volume);
-              // If significant movement sell quickly
-              if (trader.shortTermMovingAvg < 0.9 * trader.longTermMovingAvg){
-                trader.sell(10);
-              }
+              trader.sell(trader.getGlobals().stdVolume);
             }
           }
           trader.sendShares();
@@ -61,26 +53,14 @@ public class MomentumTrader extends BaseTrader {
             double generalOpinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
                 .mapToDouble(opinion -> opinion.opinion).average().orElse(0);
             if (generalOpinion > 0) {
-              trader.buyCallOption(20, trader.getGlobals().marketPrice * 1.1);
+              trader.buyCallOption(trader.optionExpiryTime,
+                  trader.getGlobals().marketPrice * trader.getGlobals().callStrikeFactor);
             } else {
-              trader.buyPutOption(20, trader.getGlobals().marketPrice * 0.9);
+              trader.buyPutOption(trader.optionExpiryTime,
+                  trader.getGlobals().marketPrice * trader.getGlobals().putStrikeFactor);
             }
           }
         });
-  }
-
-  public static Action<MomentumTrader> processOptions() {
-    return action(trader -> {
-      double tradingThresh = trader.getPrng().uniform(0, 1).sample();
-      double probToBuy = trader.getPrng().uniform(0, 1).sample();
-      if (probToBuy < trader.getGlobals().noiseActivity) {
-        if (Math.abs(tradingThresh) > 0.95) {
-          trader.buyCallOption(20, trader.getGlobals().marketPrice * 1.1);
-        } else if (Math.abs(tradingThresh) < 0.05) {
-          trader.buyPutOption(20, trader.getGlobals().marketPrice * 0.9);
-        }
-      }
-    });
   }
 
 

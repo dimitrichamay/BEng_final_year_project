@@ -15,12 +15,16 @@ public class RetailInvestor extends BaseTrader {
   @Variable
   public double opinion;
 
-  RandomGenerator random;
+  // How a change in opinion affects the aggressiveness of trade
+  @Variable
+  public double sensitivity;
+
+  private double previousPortfolio = capital;
 
   @Override
   public void init() {
-    random = this.getPrng().generator;
     opinion = getPrng().uniform(-2, 4).sample();
+    sensitivity = getPrng().uniform(0, 1).sample();
   }
 
   private static Action<RetailInvestor> action(SerializableConsumer<RetailInvestor> consumer) {
@@ -35,9 +39,13 @@ public class RetailInvestor extends BaseTrader {
 
   public static Action<RetailInvestor> processInformation() {
     return action(trader -> {
+      // We update the sensitivity of the traders opinion trading every 5 steps
+      if (trader.getContext().getTick() % 5 == 0){
+        trader.updateSensitivity();
+      }
       if (trader.getContext().getTick() > trader.getGlobals().timeToStartOpinionSharing) {
         if (trader.isTrading()) {
-          trader.tradeOnOpinion(trader.opinion);
+          trader.tradeOnOpinion(trader.opinion, 1);
         }
         double generalOpinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
             .mapToDouble(opinion -> opinion.opinion).average().orElse(0);
@@ -49,13 +57,17 @@ public class RetailInvestor extends BaseTrader {
       }
     });
   }
+  // Updates sensitivity based on how well the trader has been doing recently
+  public void updateSensitivity(){
+    sensitivity *= (portfolio / previousPortfolio);
+    // Cannot have sensitivity greater than 1
+    if (sensitivity > 1){
+      sensitivity = 1;
+    }
+    previousPortfolio = portfolio;
+  }
 
   private boolean isTrading() {
     return getPrng().uniform(0, 1).sample() > 0.4;
-  }
-
-  public static Action<RetailInvestor> processOptions() {
-    return action(trader -> {
-    });
   }
 }

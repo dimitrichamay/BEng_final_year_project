@@ -43,15 +43,16 @@ public class Exchange extends Agent<Globals> {
                   msg.priceChange = 0;
                 });
           } else {
-            //initial way to calculate price, to be updated later
+            // Initial way to calculate price, to be updated later
             long nbTraders = exchange.getNumberOfTraders();
             double lambda = exchange.getGlobals().lambda;
             double priceChange = (netDemand / (double) nbTraders) / lambda;
-            //todo: handle 0 price
             if (exchange.price + priceChange > 0){
               exchange.price += priceChange;
             }else{
+              // Price cannot be negative so we set it as zero and throw an error
               exchange.price = 0;
+              System.err.println("Price cannot be negative, company has gone bankrupt");
             }
 
             exchange.getDoubleAccumulator("price").add(exchange.price);
@@ -68,23 +69,13 @@ public class Exchange extends Agent<Globals> {
         });
   }
 
-  public static Action<Exchange> addNetDemand() {
+  public static Action<Exchange> updateDemandPrediction() {
+    final WeightedObservedPoints obs = new WeightedObservedPoints();
     return action(exchange -> {
       exchange.getGlobals().pastNetDemand
           .put(exchange.getContext().getTick(), (double) exchange.lastNetDemand);
-    });
-  }
-
-  public static Action<Exchange> addTotalDemand() {
-    return action(exchange -> {
       exchange.getGlobals().pastTotalDemand
           .put(exchange.getContext().getTick(), (double) exchange.totalDemand);
-    });
-  }
-
-  public static Action<Exchange> updatePolynomial() {
-    final WeightedObservedPoints obs = new WeightedObservedPoints();
-    return action(exchange -> {
       if (exchange.getContext().getTick() < exchange.getGlobals().derivativeTimeFrame) {
         return;
       }

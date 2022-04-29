@@ -25,30 +25,16 @@ public class NoiseTrader extends BaseTrader {
   public static Action<NoiseTrader> processInformation() {
     return action(
         trader -> {
-          int volume = 1;
           double probToBuy = trader.getPrng().uniform(0, 1).sample();
           if (probToBuy < trader.getGlobals().noiseActivity) {
             if (Math.abs(trader.tradingThresh) > 0.5) {
-              trader.buy(volume);
+              trader.buy(trader.getGlobals().stdVolume);
             } else {
-              trader.sell(volume);
+              trader.sell(trader.getGlobals().stdVolume);
             }
           }
           trader.sendShares();
         });
-  }
-
-  public static Action<NoiseTrader> processOptions(){
-    return action(trader -> {
-      double probToBuy = trader.getPrng().uniform(0, 1).sample();
-      if (probToBuy < trader.getGlobals().noiseActivity) {
-        if (Math.abs(trader.tradingThresh) > 0.95) {
-          trader.buyCallOption(20, trader.getGlobals().marketPrice * 1.1);
-        } else if (Math.abs(trader.tradingThresh) < 0.05) {
-          trader.buyPutOption(20, trader.getGlobals().marketPrice * 0.9);
-        }
-      }
-    });
   }
 
   public static Action<NoiseTrader> updateThreshold() {

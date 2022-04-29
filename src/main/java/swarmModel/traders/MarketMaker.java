@@ -71,6 +71,7 @@ public class MarketMaker extends BaseTrader {
         .filter(a -> a.getKey() >= getContext().getTick() - nbStepsPrediction)
         .mapToDouble(Entry::getValue).sum();
     if (demandPrediction == 0) {
+      //todo: sort this number nonsense
       return 1000000; //Return large integer to prevent trading before we have information
     }
     return demandPrediction / nbStepsPrediction;
@@ -112,7 +113,7 @@ public class MarketMaker extends BaseTrader {
       Option option = putOptionBought.option;
       soldOptions.add(option);
       capital += option.getOptionPrice();
-      sharesToSell += 10;
+      sharesToSell += getGlobals().optionShareNumber;
     });
   }
 
@@ -121,7 +122,7 @@ public class MarketMaker extends BaseTrader {
       Option option = callOptionBought.option;
       soldOptions.add(option);
       capital += option.getOptionPrice();
-      sharesToBuy += 10;
+      sharesToBuy += getGlobals().optionShareNumber;
     });
   }
 

@@ -45,10 +45,10 @@ public final class Globals extends GlobalState {
   public long rsiPeriod = 14;
 
   @Input(name = "Overbought Threshold")
-  public double overBuyThresh = 70.0;
+  public double overBuyThresh = 75.0;
 
   @Input(name = "Oversold Threshold")
-  public double overSellThresh = 30.0;
+  public double overSellThresh = 25.0;
 
   @Input(name = "Custom Momentum Trader Activity")
   public double traderActivity = 0.2;
@@ -58,6 +58,10 @@ public final class Globals extends GlobalState {
 
   @Input(name = "Market Price")
   public double marketPrice = 15;
+
+  // The number of shares which an option gives the right to buy/sell
+  @Input(name = "Option share number")
+  public double optionShareNumber = 10;
 
   //This can be changed if desired but is set to the interest rate level in Jan 2021
   @Input(name = "Interest Rate")
@@ -69,6 +73,18 @@ public final class Globals extends GlobalState {
 
   @Input(name = "Time to start opinion sharing")
   public double timeToStartOpinionSharing = 15;
+
+  @Constant(name = "Call option strike price factor")
+  public double callStrikeFactor = 0.95;
+
+  @Constant(name = "Put option strike price factor")
+  public double putStrikeFactor = 1.05;
+
+  @Constant(name = "Number of shares bought/sold in normal purchase")
+  public double stdVolume = 1;
+
+  @Constant(name = "Max number of shares traded on an opinion")
+  public double maxSharesTradedOnOpinion = 10;
 
   @Input(name = "Time to start crash")
   public double timeToSell = 100;

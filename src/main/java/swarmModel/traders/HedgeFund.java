@@ -19,6 +19,7 @@ public class HedgeFund extends BaseTrader{
       if (trader.getContext().getTick() < trader.shortingPhase){
         trader.sell(500);
       }
+      //todo: make this better
       // Second short selling to try and make the market fall
       if (trader.getGlobals().marketPrice > 2 * trader.initialMarketPrice && !trader.secondShort){
         trader.sell(1000);
@@ -29,9 +30,5 @@ public class HedgeFund extends BaseTrader{
         trader.buy(Math.abs(trader.shares));
       }
     });
-  }
-
-  public static Action<HedgeFund> processOptions(){
-    return action(trader->{});
   }
 }

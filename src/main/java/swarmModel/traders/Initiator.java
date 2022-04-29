@@ -22,6 +22,7 @@ public class Initiator extends BaseTrader {
   public static Action<Initiator> shareOpinion() {
     return action(
         trader -> {
+          //todo: sort opinion to change over time
           if (trader.getContext().getTick() < trader.getGlobals().timeToSell) {
             trader.getLinks(OpinionLink.class).send(OpinionShared.class, (msg, link) ->
             {

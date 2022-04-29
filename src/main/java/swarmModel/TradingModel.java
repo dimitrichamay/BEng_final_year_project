@@ -8,6 +8,7 @@ import simudyne.core.annotations.ModelSettings;
 import simudyne.core.rng.SeededRandom;
 import swarmModel.links.Links;
 import swarmModel.links.Links.OpinionLink;
+import swarmModel.traders.BaseTrader;
 import swarmModel.traders.FundamentalTrader;
 import swarmModel.traders.HedgeFund;
 import swarmModel.traders.Initiator;
@@ -43,7 +44,6 @@ public class TradingModel extends AgentBasedModel<Globals> {
     Group<MarketMaker> marketMakerGroup = generateGroup(MarketMaker.class,
         1);
     Group<Exchange> exchange = generateGroup(Exchange.class, 1);
-    //TODO: change these numbers
     Group<HedgeFund> hedgeFundGroup = generateGroup(HedgeFund.class, getGlobals().nbHedgeFunds);
     Group<Initiator> initiatorGroup = generateGroup(Initiator.class, getGlobals().nbInitiators);
     Group<RetailInvestor> retailInvestorGroup = generateGroup(RetailInvestor.class,
@@ -102,19 +102,17 @@ public class TradingModel extends AgentBasedModel<Globals> {
       updateInterestRate();
     }
     updateHistoricalPrices();
-    run(Exchange.addNetDemand());
-    run(Exchange.addTotalDemand());
-    run(Exchange.updatePolynomial());
+    run(Exchange.updateDemandPrediction());
+
     run(
-        Split.create(NoiseTrader.updateOptions(),
-            FundamentalTrader.updateOptions(),
-            MomentumTrader.updateOptions())
+        Split.create(BaseTrader.updateOptions())
     );
 
     run(
-        Split.create(NoiseTrader.processOptions(),
-            FundamentalTrader.processOptions(),
-            MomentumTrader.processOptions()),
+        //todo: create subclass to do all these
+        Split.create(NoiseTrader.addOptionLiquidity(),
+            FundamentalTrader.addOptionLiquidity(),
+            MomentumTrader.addOptionLiquidity()),
 
         MarketMaker.processOptionSales()
     );
@@ -160,7 +158,6 @@ public class TradingModel extends AgentBasedModel<Globals> {
     return r.generator.nextGaussian();
   }
 
-  //todo: fix this volatility measure so stops giving 0
   // We use the standard deviation as a measure for the volatility of the price
   private double calculateVolatility(int timeFrame) {
     if (getGlobals().historicalPrices.isEmpty()) {
@@ -172,8 +169,7 @@ public class TradingModel extends AgentBasedModel<Globals> {
     double squaredDevs = getGlobals().historicalPrices.entrySet().stream()
         .filter(a -> a.getKey() >= getContext().getTick() - timeFrame).mapToDouble(Entry::getValue)
         .map(a -> Math.pow((mean - a), 2)).sum();
-    //getGlobals().volatility = Math.sqrt(squaredDevs / timeFrame);
-    getGlobals().volatility = 1;
+    getGlobals().volatility = Math.sqrt(squaredDevs / timeFrame);
     return getGlobals().volatility;
   }
 }
