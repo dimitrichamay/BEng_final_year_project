@@ -22,6 +22,7 @@ public class MarketMaker extends BaseTrader {
   private final double priceToStartCoverPos = initialMarketPrice * 1.5;
   private final double priceToCoverHalfPos = initialMarketPrice * 3;
   private final double priceToCoverPos = initialMarketPrice * 5;
+  private final double compensationFactor = 0.01;
 
   private int sharesToBuy = 0;
   private int sharesToSell = 0;
@@ -34,13 +35,19 @@ public class MarketMaker extends BaseTrader {
   public static Action<MarketMaker> processInformation() {
     return action(marketMaker -> {
       double predictNetDemand = marketMaker.predictNetDemand();
-      // Adds liquidity on other side of the market if large disparity in demand
-      if (Math.abs(predictNetDemand / marketMaker.predictTotalDemand()) > maxThreshold) {
-        long compensation = Math.round(Math.abs(predictNetDemand) * 0.01);
-        if (predictNetDemand > 0) {
-          marketMaker.sell(compensation);
-        } else {
-          marketMaker.buy(compensation);
+      double predictTotalDemand = marketMaker.predictTotalDemand();
+      if (predictTotalDemand > 0) {
+
+        // Adds liquidity on other side of the market if large disparity in demand
+        if (Math.abs(predictNetDemand / predictTotalDemand) > maxThreshold) {
+          long compensation = Math
+              .round(Math.abs(predictNetDemand) * marketMaker.compensationFactor);
+
+          if (predictNetDemand > 0) {
+            marketMaker.sell(compensation);
+          } else {
+            marketMaker.buy(compensation);
+          }
         }
       }
 
@@ -62,7 +69,7 @@ public class MarketMaker extends BaseTrader {
 
   private double predictTotalDemand() {
     if (getContext().getTick() == 0) {
-      return 1000000; //Return large integer to prevent trading before we have information
+      return 0;
     } else if (getContext().getTick() < nbStepsPrediction) {
       return getGlobals().pastTotalDemand.entrySet().stream().mapToDouble(Entry::getValue).sum()
           / getContext().getTick();
@@ -70,10 +77,6 @@ public class MarketMaker extends BaseTrader {
     double demandPrediction = getGlobals().pastTotalDemand.entrySet().stream()
         .filter(a -> a.getKey() >= getContext().getTick() - nbStepsPrediction)
         .mapToDouble(Entry::getValue).sum();
-    if (demandPrediction == 0) {
-      //todo: sort this number nonsense
-      return 1000000; //Return large integer to prevent trading before we have information
-    }
     return demandPrediction / nbStepsPrediction;
   }
 

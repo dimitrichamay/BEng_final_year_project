@@ -55,6 +55,7 @@ public class RetailInvestor extends BaseTrader {
           trader.opinion = (generalOpinion + trader.opinion) / 2;
         }
       }
+      trader.deltaHedge();
     });
   }
   // Updates sensitivity based on how well the trader has been doing recently

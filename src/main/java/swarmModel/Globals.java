@@ -51,7 +51,7 @@ public final class Globals extends GlobalState {
   public double overSellThresh = 25.0;
 
   @Input(name = "Custom Momentum Trader Activity")
-  public double traderActivity = 0.2;
+  public double traderActivity = 0.15;
 
   @Input(name = "Custom noise trader activity")
   public double noiseActivity = 0.4;
@@ -85,6 +85,9 @@ public final class Globals extends GlobalState {
 
   @Constant(name = "Max number of shares traded on an opinion")
   public double maxSharesTradedOnOpinion = 10;
+
+  @Constant(name = "Max opinion")
+  public double maxOpinion = 20;
 
   @Input(name = "Time to start crash")
   public double timeToSell = 100;

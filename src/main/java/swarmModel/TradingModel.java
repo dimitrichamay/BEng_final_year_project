@@ -12,6 +12,7 @@ import swarmModel.traders.BaseTrader;
 import swarmModel.traders.FundamentalTrader;
 import swarmModel.traders.HedgeFund;
 import swarmModel.traders.Initiator;
+import swarmModel.traders.LiquidityProvider;
 import swarmModel.traders.MarketMaker;
 import swarmModel.traders.MomentumTrader;
 import swarmModel.traders.NoiseTrader;
@@ -109,10 +110,7 @@ public class TradingModel extends AgentBasedModel<Globals> {
     );
 
     run(
-        //todo: create subclass to do all these
-        Split.create(NoiseTrader.addOptionLiquidity(),
-            FundamentalTrader.addOptionLiquidity(),
-            MomentumTrader.addOptionLiquidity()),
+        LiquidityProvider.addOptionLiquidity(),
 
         MarketMaker.processOptionSales()
     );

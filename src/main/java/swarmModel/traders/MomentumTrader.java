@@ -11,7 +11,7 @@ import swarmModel.links.Messages;
    This agent is an example implementation of a moving average trading strategy
 */
 
-public class MomentumTrader extends BaseTrader {
+public class MomentumTrader extends LiquidityProvider {
 
   @Variable(name = "Long Term Moving Average")
   public double longTermMovingAvg;
@@ -27,7 +27,6 @@ public class MomentumTrader extends BaseTrader {
   public static Action<MomentumTrader> processInformation() {
     return action(
         trader -> {
-          //todo: alter how many shares are bought/sold depending on momentum
           if (trader.getContext().getTick() > trader.getGlobals().longTermAverage) {
             trader.longTermMovingAvg = trader
                 .getTermMovingAvg(trader.getGlobals().longTermAverage,
@@ -36,13 +35,13 @@ public class MomentumTrader extends BaseTrader {
                 .getTermMovingAvg(trader.getGlobals().shortTermAverage,
                     trader.getGlobals().historicalPrices);
             double probToBuy = trader.getPrng().uniform(0, 1).sample();
-
+            double increaseExpectation = trader.shortTermMovingAvg / trader.longTermMovingAvg;
             if (trader.shortTermMovingAvg > trader.longTermMovingAvg && probToBuy < trader
                 .getGlobals().traderActivity) {
-              trader.buy(trader.getGlobals().stdVolume);
+              trader.buy(Math.round(trader.getGlobals().stdVolume * increaseExpectation));
             } else if ((trader.shortTermMovingAvg < trader.longTermMovingAvg && probToBuy < trader
                 .getGlobals().traderActivity)) {
-              trader.sell(trader.getGlobals().stdVolume);
+              trader.sell(Math.round(trader.getGlobals().stdVolume * (1 / increaseExpectation)));
             }
           }
           trader.sendShares();
@@ -60,6 +59,7 @@ public class MomentumTrader extends BaseTrader {
                   trader.getGlobals().marketPrice * trader.getGlobals().putStrikeFactor);
             }
           }
+          trader.deltaHedge();
         });
   }
 

@@ -13,18 +13,25 @@ public class Option {
   private int timeToExpiry;
 
   private double exercisePrice;
-
+  private double initialStockPrice;
   private type optionType;
 
-  public Option(int timeToExpiry, double exercisePrice, type optionType) {
+
+
+  public Option(int timeToExpiry, double exercisePrice, type optionType, double initialStockPrice) {
     this.timeToExpiry = timeToExpiry;
     this.exercisePrice = exercisePrice;
     this.optionType = optionType;
+    this.initialStockPrice = initialStockPrice;
   }
 
   public boolean timeStep() {
     timeToExpiry--;
     return timeToExpiry == 0;
+  }
+
+  public double getInitialStockPrice() {
+    return initialStockPrice;
   }
 
   public double getOptionPrice() {
@@ -39,23 +46,12 @@ public class Option {
     return timeToExpiry;
   }
 
-  public type getOptionType() {
-    return optionType;
-  }
-
   public boolean isCallOption() {
     return optionType == type.CALL;
-  }
-
-  public void setTimeToExpiry(int timeToExpiry) {
-    this.timeToExpiry = timeToExpiry;
   }
 
   public double getExercisePrice() {
     return exercisePrice;
   }
 
-  public void setExercisePrice(double exercisePrice) {
-    this.exercisePrice = exercisePrice;
-  }
 }

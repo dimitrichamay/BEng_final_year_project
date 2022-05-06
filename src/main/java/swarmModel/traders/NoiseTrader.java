@@ -5,7 +5,7 @@ import simudyne.core.abm.Action;
 import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
 
-public class NoiseTrader extends BaseTrader {
+public class NoiseTrader extends LiquidityProvider {
 
 
   RandomGenerator random;
@@ -34,6 +34,7 @@ public class NoiseTrader extends BaseTrader {
             }
           }
           trader.sendShares();
+          trader.deltaHedge();
         });
   }
 
@@ -46,6 +47,4 @@ public class NoiseTrader extends BaseTrader {
           }
         });
   }
-
-
 }

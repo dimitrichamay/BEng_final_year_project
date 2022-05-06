@@ -109,12 +109,16 @@ public abstract class BaseTrader extends Agent<Globals> {
     updatePortfolioValue();
   }
 
+  public boolean hasShortPosition() {
+    return shares < 0;
+  }
+
   /******************* Options Trading ******************/
 
   // Each option is valid for 10 shares of the stock (used to simplify values instead of 100)
   public void buyPutOption(int expiryTime, double exercisePrice) {
-    Option option = new Option(expiryTime, exercisePrice, type.PUT);
-    initiateOptionPrice(option);
+    Option option = new Option(expiryTime, exercisePrice, type.PUT, getGlobals().marketPrice);
+    option.setOptionPrice(calculateOptionPrice(option));
     getDoubleAccumulator("putOptionsBought").add(1);
     putOptions += 1;
     getLinks(Links.TradeLink.class)
@@ -125,8 +129,8 @@ public abstract class BaseTrader extends Agent<Globals> {
   }
 
   public void buyCallOption(int expiryTime, double exercisePrice) {
-    Option option = new Option(expiryTime, exercisePrice, type.CALL);
-    initiateOptionPrice(option);
+    Option option = new Option(expiryTime, exercisePrice, type.CALL, getGlobals().marketPrice);
+    option.setOptionPrice(calculateOptionPrice(option));
     getDoubleAccumulator("callOptionsBought").add(1);
     callOptions += 1;
     getLinks(Links.TradeLink.class)
@@ -215,7 +219,19 @@ public abstract class BaseTrader extends Agent<Globals> {
     return value;
   }
 
-  public void initiateOptionPrice(Option option) {
+  public double calculateD1(Option option){
+    double stockPrice = getGlobals().marketPrice;
+    double exercisePrice = option.getExercisePrice();
+    double r = getGlobals().interestRate;
+    double timeToExpiry = option.getTimeToExpiry();
+    // Time to expiry is represented in years for these calculations, each timeStep = 1 day
+    timeToExpiry = timeToExpiry / 365;
+    return (1 / (getGlobals().volatility * Math.sqrt(timeToExpiry))) * (
+        Math.log(stockPrice / exercisePrice)
+            + (r + Math.pow(getGlobals().volatility, 2)) * timeToExpiry);
+  }
+
+  public double calculateOptionPrice(Option option) {
     /* Black Scholes Equation: Cost = Stock price * N(d1) - Exercise price * e^(-interestRate * timeToExpiry) * N(d2)
        where N(d1) and N(d2) are cumulative distribution functions for the normal distribution */
     double stockPrice = getGlobals().marketPrice;
@@ -224,18 +240,24 @@ public abstract class BaseTrader extends Agent<Globals> {
     double timeToExpiry = option.getTimeToExpiry();
     // Time to expiry is represented in years for these calculations, each timeStep = 1 day
     timeToExpiry = timeToExpiry / 365;
-    double d1 = (1 / (getGlobals().volatility * Math.sqrt(timeToExpiry))) * (
-        Math.log(stockPrice / exercisePrice)
-            + (r + Math.pow(getGlobals().volatility, 2)) * timeToExpiry);
+    double d1 = calculateD1(option);
     double d2 = d1 - getGlobals().volatility * timeToExpiry;
     if (option.isCallOption()) {
-      option.setOptionPrice((stockPrice * getNormalDistribution(d1)
+      double optionPrice = (stockPrice * getNormalDistribution(d1)
           - exercisePrice * Math.exp(-r * timeToExpiry)
-          * getNormalDistribution(d2)) * getGlobals().optionShareNumber);
+          * getNormalDistribution(d2)) * getGlobals().optionShareNumber;
+      if (optionPrice > 0) {
+        return optionPrice;
+      }
+      return 0;
     } else {
-      option.setOptionPrice((getNormalDistribution(-d2) * exercisePrice
+      double optionPrice = (getNormalDistribution(-d2) * exercisePrice
           * Math.exp(-r * timeToExpiry)
-          - getNormalDistribution(-d1) * stockPrice) * getGlobals().optionShareNumber);
+          - getNormalDistribution(-d1) * stockPrice) * getGlobals().optionShareNumber;
+      if (optionPrice > 0) {
+        return optionPrice;
+      }
+      return 0;
     }
   }
 
@@ -244,24 +266,39 @@ public abstract class BaseTrader extends Agent<Globals> {
     return normalDistribution.cumulativeProbability(d);
   }
 
-  public static Action<BaseTrader> addOptionLiquidity() {
-    return action(trader -> {
-      double tradingThresh = trader.getPrng().uniform(0, 1).sample();
-      double probToBuy = trader.getPrng().uniform(0, 1).sample();
-      if (probToBuy < trader.getGlobals().noiseActivity) {
-        if (Math.abs(tradingThresh) > 0.95) {
-          trader.buyCallOption(trader.optionExpiryTime,
-              trader.getGlobals().marketPrice * trader.getGlobals().callStrikeFactor);
-        } else if (Math.abs(tradingThresh) < 0.05) {
-          trader.buyPutOption(trader.optionExpiryTime,
-              trader.getGlobals().marketPrice * trader.getGlobals().putStrikeFactor);
-        }
-      }
-    });
+  /*********************** Hedging  ***********************/
+
+  public double calcualteDelta(Option option) {
+    double delta = 0;
+    double currentOptionPrice = calculateOptionPrice(option);
+    double initialOptionPrice = option.getOptionPrice();
+
+    delta = (currentOptionPrice - initialOptionPrice) / (getGlobals().marketPrice / option
+        .getInitialStockPrice() * getGlobals().optionShareNumber);
+    double d1 = calculateD1(option);
+    double alternativeDelta = Math.exp(-option.getTimeToExpiry()) * getNormalDistribution(d1);
+    //todo: test this out see if they give the same values for call options
+    // check that absolute value of call and put delta sum approx to 1
+    // remember delta is for 10 shares, can multiply by 10 here or in deltahedge()
+    return delta;
   }
+
+  public void deltaHedge() {
+    // Calculates the total delta of the portfolio
+    double totalDelta = Math.round(boughtOptions.stream().mapToDouble(this::calcualteDelta).sum());
+    if (totalDelta == 0) {
+      return;
+    } else if (totalDelta > 0) {
+      shortStock((int) totalDelta);
+    } else {
+      buy((int) totalDelta);
+    }
+  }
+
 
   /******************* Opinion Dynamics ******************/
 
+  // Uses an exponential model based on trader aggressiveness
   protected void tradeOnOpinion(double generalOpinion, double sensitivity) {
     double scaledOpinion = Math.abs(generalOpinion / 20);
     double sensitiveOpinion =
