@@ -1,8 +1,5 @@
 package swarmModel.traders;
 
-import java.util.Map.Entry;
-import java.util.stream.Collectors;
-import org.apache.commons.math3.random.RandomGenerator;
 import simudyne.core.abm.Action;
 import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
@@ -10,7 +7,7 @@ import swarmModel.links.Links.OpinionLink;
 import swarmModel.links.Messages;
 import swarmModel.links.Messages.OpinionShared;
 
-public class RetailInvestor extends BaseTrader {
+public class RetailInvestor extends OptionTrader {
 
   @Variable
   public double opinion;
@@ -56,6 +53,7 @@ public class RetailInvestor extends BaseTrader {
         }
       }
       trader.deltaHedge();
+      trader.sendShares();
     });
   }
   // Updates sensitivity based on how well the trader has been doing recently

@@ -11,7 +11,7 @@ import swarmModel.links.Messages;
    This agent is an example implementation of a moving average trading strategy
 */
 
-public class MomentumTrader extends LiquidityProvider {
+public class MomentumTrader extends OptionTrader {
 
   @Variable(name = "Long Term Moving Average")
   public double longTermMovingAvg;
@@ -44,7 +44,6 @@ public class MomentumTrader extends LiquidityProvider {
               trader.sell(Math.round(trader.getGlobals().stdVolume * (1 / increaseExpectation)));
             }
           }
-          trader.sendShares();
 
           // Momentum buy medium-term options based on the general population opinion every 5 steps
           if (trader.getContext().getTick() > trader.getGlobals().timeToStartOpinionSharing
@@ -60,6 +59,7 @@ public class MomentumTrader extends LiquidityProvider {
             }
           }
           trader.deltaHedge();
+          trader.sendShares();
         });
   }
 

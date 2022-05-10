@@ -12,10 +12,10 @@ import swarmModel.traders.BaseTrader;
 import swarmModel.traders.FundamentalTrader;
 import swarmModel.traders.HedgeFund;
 import swarmModel.traders.Initiator;
-import swarmModel.traders.LiquidityProvider;
 import swarmModel.traders.MarketMaker;
 import swarmModel.traders.MomentumTrader;
 import swarmModel.traders.NoiseTrader;
+import swarmModel.traders.OptionTrader;
 import swarmModel.traders.RetailInvestor;
 
 @ModelSettings(macroStep = 150, timeUnit = "DAYS", start = "2021-01-01T00:00:00Z", id = "GME_squeeze")
@@ -70,7 +70,6 @@ public class TradingModel extends AgentBasedModel<Globals> {
     fundamentalTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
     hedgeFundGroup.fullyConnected(exchange, Links.TradeLink.class);
     retailInvestorGroup.fullyConnected(exchange, Links.TradeLink.class);
-    // initiatorGroup.fullyConnected(exchange, Links.TradeLink.class);
 
     exchange.fullyConnected(momentumTraderGroup, Links.TradeLink.class);
     exchange.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
@@ -78,7 +77,6 @@ public class TradingModel extends AgentBasedModel<Globals> {
     exchange.fullyConnected(marketMakerGroup, Links.TradeLink.class);
     exchange.fullyConnected(hedgeFundGroup, Links.TradeLink.class);
     exchange.fullyConnected(retailInvestorGroup, Links.TradeLink.class);
-    //exchange.fullyConnected(initiatorGroup, Links.TradeLink.class);
 
     // Setup of Opinion Links
 
@@ -105,15 +103,9 @@ public class TradingModel extends AgentBasedModel<Globals> {
     updateHistoricalPrices();
     run(Exchange.updateDemandPrediction());
 
-    run(
-        Split.create(BaseTrader.updateOptions())
-    );
+    run(OptionTrader.updateOptions());
 
-    run(
-        LiquidityProvider.addOptionLiquidity(),
-
-        MarketMaker.processOptionSales()
-    );
+    run(MarketMaker.processOptionSales());
 
     run(
         Split.create(
@@ -129,7 +121,7 @@ public class TradingModel extends AgentBasedModel<Globals> {
             HedgeFund.processInformation()),
 
         Exchange.calculateBuyAndSellPrice(),
-        NoiseTrader.updateThreshold()
+        BaseTrader.updatePortfolioValues()
     );
   }
 

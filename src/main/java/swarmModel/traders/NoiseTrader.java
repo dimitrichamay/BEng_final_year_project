@@ -5,7 +5,7 @@ import simudyne.core.abm.Action;
 import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
 
-public class NoiseTrader extends LiquidityProvider {
+public class NoiseTrader extends OptionTrader {
 
 
   RandomGenerator random;
@@ -25,12 +25,22 @@ public class NoiseTrader extends LiquidityProvider {
   public static Action<NoiseTrader> processInformation() {
     return action(
         trader -> {
+          trader.updateThreshold();
           double probToBuy = trader.getPrng().uniform(0, 1).sample();
           if (probToBuy < trader.getGlobals().noiseActivity) {
+            // Random liquidity adding
             if (Math.abs(trader.tradingThresh) > 0.5) {
               trader.buy(trader.getGlobals().stdVolume);
             } else {
               trader.sell(trader.getGlobals().stdVolume);
+            }
+            // Random option liquidity adding
+            if (Math.abs(trader.tradingThresh) > 0.95) {
+              trader.buyCallOption(trader.optionExpiryTime,
+                  trader.getGlobals().marketPrice * trader.getGlobals().callStrikeFactor);
+            } else if (Math.abs(trader.tradingThresh) < 0.05) {
+              trader.buyPutOption(trader.optionExpiryTime,
+                  trader.getGlobals().marketPrice * trader.getGlobals().putStrikeFactor);
             }
           }
           trader.sendShares();
@@ -38,13 +48,10 @@ public class NoiseTrader extends LiquidityProvider {
         });
   }
 
-  public static Action<NoiseTrader> updateThreshold() {
-    return action(
-        trader -> {
-          double updateFrequency = trader.getGlobals().updateFrequency;
-          if (trader.random.nextDouble() <= updateFrequency) {
-            trader.tradingThresh = trader.getPrng().uniform(0, 1).sample();
-          }
-        });
+  public void updateThreshold() {
+    double updateFrequency = getGlobals().updateFrequency;
+    if (random.nextDouble() <= updateFrequency) {
+      tradingThresh = getPrng().uniform(0, 1).sample();
+    }
   }
 }

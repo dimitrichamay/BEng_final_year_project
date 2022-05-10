@@ -106,7 +106,6 @@ public class MarketMaker extends BaseTrader {
     shares += volume;
     capital -= volume * getGlobals().marketPrice;
     buyValuesUpdate(volume);
-    updatePortfolioValue();
   }
 
   /*********** OPTION SELLING **********/

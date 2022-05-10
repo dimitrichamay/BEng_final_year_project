@@ -34,7 +34,6 @@ public class Exchange extends Agent<Globals> {
               .mapToInt(order -> (int) order.volume).sum();
           exchange.totalDemand = buys + sells;
           int netDemand = buys - sells;
-
           exchange.lastNetDemand = netDemand;
           if (netDemand == 0) {
             exchange.getLinks(Links.TradeLink.class)
@@ -47,9 +46,9 @@ public class Exchange extends Agent<Globals> {
             long nbTraders = exchange.getNumberOfTraders();
             double lambda = exchange.getGlobals().lambda;
             double priceChange = (netDemand / (double) nbTraders) / lambda;
-            if (exchange.price + priceChange > 0){
+            if (exchange.price + priceChange > 0) {
               exchange.price += priceChange;
-            }else{
+            } else {
               // Price cannot be negative so we set it as zero and throw an error
               exchange.price = 0;
               System.err.println("Price cannot be negative, company has gone bankrupt");
@@ -91,7 +90,8 @@ public class Exchange extends Agent<Globals> {
 
   private long getNumberOfTraders() {
     return getGlobals().nbFundamentalTraders + getGlobals().nbNoiseTraders
-        + getGlobals().nbMomentumTraders;
+        + getGlobals().nbMomentumTraders + getGlobals().nbHedgeFunds
+        + getGlobals().nbRetailInvestors;
   }
 
 

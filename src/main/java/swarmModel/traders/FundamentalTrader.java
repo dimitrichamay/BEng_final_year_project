@@ -3,7 +3,7 @@ package swarmModel.traders;
 import simudyne.core.abm.Action;
 import simudyne.core.functions.SerializableConsumer;
 
-public class FundamentalTrader extends LiquidityProvider {
+public class FundamentalTrader extends BaseTrader {
 
   //Helper function for ease of interpretation
   private static Action<FundamentalTrader> action(
@@ -24,8 +24,6 @@ public class FundamentalTrader extends LiquidityProvider {
               trader.buy(trader.getGlobals().stdVolume);
             }
           }
-          trader.sendShares();
-          trader.deltaHedge();
         });
   }
 
