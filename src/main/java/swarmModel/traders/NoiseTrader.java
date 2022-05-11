@@ -28,7 +28,7 @@ public class NoiseTrader extends OptionTrader {
           trader.updateThreshold();
           double probToBuy = trader.getPrng().uniform(0, 1).sample();
           if (probToBuy < trader.getGlobals().noiseActivity) {
-            // Random liquidity adding
+            // Random stock liquidity adding
             if (Math.abs(trader.tradingThresh) > 0.5) {
               trader.buy(trader.getGlobals().stdVolume);
             } else {

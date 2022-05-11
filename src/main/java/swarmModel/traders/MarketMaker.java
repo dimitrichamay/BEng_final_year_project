@@ -51,19 +51,16 @@ public class MarketMaker extends BaseTrader {
         }
       }
 
+      //todo: this currently does nothing
+     // marketMaker.sellCallOptions();
+     // marketMaker.sellPutOptions();
+
       marketMaker.sell(marketMaker.sharesToSell);
       marketMaker.buy(marketMaker.sharesToBuy);
       marketMaker.sharesToBuy = 0;
       marketMaker.sharesToSell = 0;
 
       marketMaker.coverShortIfNecessary();
-    });
-  }
-
-  public static Action<MarketMaker> processOptionSales() {
-    return action(marketMaker -> {
-      marketMaker.sellCallOptions();
-      marketMaker.sellPutOptions();
     });
   }
 

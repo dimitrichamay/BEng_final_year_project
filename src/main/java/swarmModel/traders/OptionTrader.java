@@ -153,7 +153,7 @@ public class OptionTrader extends BaseTrader {
     timeToExpiry = timeToExpiry / 365;
     return (1 / (getGlobals().volatility * Math.sqrt(timeToExpiry))) * (
         Math.log(stockPrice / exercisePrice)
-            + (r + Math.pow(getGlobals().volatility, 2)) * timeToExpiry);
+            + (r + Math.pow(getGlobals().volatility, 2) / 2) * timeToExpiry);
   }
 
   public double calculateOptionPrice(Option option) {
@@ -201,6 +201,7 @@ public class OptionTrader extends BaseTrader {
     // This is the value of delta for 10 shares since this is what an option represents
     delta = (currentOptionPrice - initialOptionPrice) / (getGlobals().marketPrice / option
         .getInitialStockPrice() * getGlobals().optionShareNumber);
+    System.out.println(calculateD1(option));
     // todo:check that absolute value of call and put delta sum approx to 1
     // remember delta is for 10 shares, can multiply by 10 here or in deltahedge()
     return delta;

@@ -2,20 +2,15 @@ package swarmModel.traders;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Stream;
-import org.apache.commons.math3.distribution.NormalDistribution;
 import simudyne.core.abm.Action;
 import simudyne.core.abm.Agent;
 import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
 import swarmModel.Globals;
-import swarmModel.links.Links;
 import swarmModel.links.Links.TradeLink;
-import swarmModel.links.Messages;
 import swarmModel.links.Messages.BuyOrderPlaced;
 import swarmModel.links.Messages.SellOrderPlaced;
 import swarmModel.utils.Option;
-import swarmModel.utils.Option.type;
 
 public abstract class BaseTrader extends Agent<Globals> {
 
@@ -37,7 +32,10 @@ public abstract class BaseTrader extends Agent<Globals> {
   }
 
   public static Action<BaseTrader> updatePortfolioValues() {
-    return action(BaseTrader::updatePortfolioValue);
+    return action(trader ->{
+      trader.updateCapitalForInterest();
+      trader.updatePortfolioValue();
+    });
   }
 
   /* We allow buying when we have 0 capital since we are
@@ -80,6 +78,11 @@ public abstract class BaseTrader extends Agent<Globals> {
 
   public void updatePortfolioValue() {
     portfolio = shares * getGlobals().marketPrice + capital;
+  }
+
+  public void updateCapitalForInterest(){
+    double dailyInterest = getGlobals().interestRate / 365;
+    capital *= (1 + dailyInterest);
   }
 
   /******************* Short Selling ******************/

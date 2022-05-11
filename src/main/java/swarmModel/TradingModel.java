@@ -18,7 +18,7 @@ import swarmModel.traders.NoiseTrader;
 import swarmModel.traders.OptionTrader;
 import swarmModel.traders.RetailInvestor;
 
-@ModelSettings(macroStep = 150, timeUnit = "DAYS", start = "2021-01-01T00:00:00Z", id = "GME_squeeze")
+@ModelSettings(timeUnit = "DAYS", start = "2021-01-01T00:00:00Z", id = "GME_squeeze", macroStep = 150)
 public class TradingModel extends AgentBasedModel<Globals> {
 
   {
@@ -96,16 +96,14 @@ public class TradingModel extends AgentBasedModel<Globals> {
   public void step() {
     super.step();
 
-    // We update the interest rate every 10 iterations
-    if (getContext().getTick() % 5 == 0 && getContext().getTick() > 20) {
-      updateInterestRate();
-    }
+    // We update the interest rate every 5 iterations
+    //if (getContext().getTick() % 5 == 0 && getContext().getTick() > 20) {
+      //updateInterestRate();
+    //}
     updateHistoricalPrices();
     run(Exchange.updateDemandPrediction());
 
     run(OptionTrader.updateOptions());
-
-    run(MarketMaker.processOptionSales());
 
     run(
         Split.create(
