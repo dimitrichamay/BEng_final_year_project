@@ -7,8 +7,11 @@ import simudyne.core.abm.Split;
 import simudyne.core.annotations.ModelSettings;
 import simudyne.core.rng.SeededRandom;
 import swarmModel.links.Links;
+import swarmModel.links.Links.BorrowLink;
 import swarmModel.links.Links.OpinionLink;
+import swarmModel.traders.Bank;
 import swarmModel.traders.BaseTrader;
+import swarmModel.traders.Borrower;
 import swarmModel.traders.FundamentalTrader;
 import swarmModel.traders.HedgeFund;
 import swarmModel.traders.Initiator;
@@ -24,8 +27,8 @@ public class TradingModel extends AgentBasedModel<Globals> {
   {
     registerAgentTypes(MarketMaker.class, NoiseTrader.class, MomentumTrader.class,
         FundamentalTrader.class, Exchange.class, HedgeFund.class, Initiator.class,
-        RetailInvestor.class);
-    registerLinkTypes(Links.TradeLink.class, OpinionLink.class);
+        RetailInvestor.class, Bank.class);
+    registerLinkTypes(Links.TradeLink.class, OpinionLink.class, BorrowLink.class);
     createDoubleAccumulator("buys", "Number of buy orders");
     createDoubleAccumulator("sells", "Number of sell orders");
     createDoubleAccumulator("price", "Price");
@@ -49,6 +52,7 @@ public class TradingModel extends AgentBasedModel<Globals> {
     Group<Initiator> initiatorGroup = generateGroup(Initiator.class, getGlobals().nbInitiators);
     Group<RetailInvestor> retailInvestorGroup = generateGroup(RetailInvestor.class,
         getGlobals().nbRetailInvestors);
+    Group<Bank> bankGroup = generateGroup(Bank.class, 1);
 
     // Setup of trade links
     marketMakerGroup.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
@@ -62,7 +66,6 @@ public class TradingModel extends AgentBasedModel<Globals> {
     marketMakerGroup.fullyConnected(retailInvestorGroup, Links.TradeLink.class);
     retailInvestorGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
     marketMakerGroup.fullyConnected(initiatorGroup, Links.TradeLink.class);
-    initiatorGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
 
     marketMakerGroup.fullyConnected(exchange, Links.TradeLink.class);
     momentumTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
@@ -82,12 +85,17 @@ public class TradingModel extends AgentBasedModel<Globals> {
 
     retailInvestorGroup.gridConnected(Links.OpinionLink.class).width(2);
     initiatorGroup.partitionConnected(retailInvestorGroup, Links.OpinionLink.class).shard();
-
-    initiatorGroup.fullyConnected(noiseTraderGroup, Links.OpinionLink.class);
     initiatorGroup.fullyConnected(momentumTraderGroup, Links.OpinionLink.class);
-    initiatorGroup.fullyConnected(fundamentalTraderGroup, Links.OpinionLink.class);
-    initiatorGroup.fullyConnected(marketMakerGroup, Links.OpinionLink.class);
-    initiatorGroup.fullyConnected(hedgeFundGroup, Links.OpinionLink.class);
+
+    // Setup of Borrowing Links
+
+    fundamentalTraderGroup.fullyConnected(bankGroup, Links.BorrowLink.class);
+    momentumTraderGroup.fullyConnected(bankGroup, Links.BorrowLink.class);
+    retailInvestorGroup.fullyConnected(bankGroup, Links.BorrowLink.class);
+
+    bankGroup.fullyConnected(fundamentalTraderGroup, Links.BorrowLink.class);
+    bankGroup.fullyConnected(momentumTraderGroup, Links.BorrowLink.class);
+    bankGroup.fullyConnected(retailInvestorGroup, Links.BorrowLink.class);
 
     super.setup();
   }
@@ -98,12 +106,19 @@ public class TradingModel extends AgentBasedModel<Globals> {
 
     // We update the interest rate every 5 iterations
     //if (getContext().getTick() % 5 == 0 && getContext().getTick() > 20) {
-      //updateInterestRate();
+    //updateInterestRate();
     //}
     updateHistoricalPrices();
     run(Exchange.updateDemandPrediction());
 
     run(OptionTrader.updateOptions());
+
+    run(Borrower.processBorrowing(),
+
+        Bank.lendMoney(),
+
+        Borrower.actOnLoan()
+    );
 
     run(
         Split.create(

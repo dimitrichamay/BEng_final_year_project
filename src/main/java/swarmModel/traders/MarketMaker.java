@@ -17,7 +17,6 @@ public class MarketMaker extends BaseTrader {
 
   private static final double maxThreshold = 0.5;
 
-  private static final double nbStepsPrediction = 5;
 
   private final double priceToStartCoverPos = initialMarketPrice * 1.5;
   private final double priceToCoverHalfPos = initialMarketPrice * 3;
@@ -34,7 +33,7 @@ public class MarketMaker extends BaseTrader {
 
   public static Action<MarketMaker> processInformation() {
     return action(marketMaker -> {
-      double predictNetDemand = marketMaker.predictNetDemand();
+      double predictNetDemand = marketMaker.predictNetDemand(0);
       double predictTotalDemand = marketMaker.predictTotalDemand();
       if (predictTotalDemand > 0) {
 
@@ -64,46 +63,6 @@ public class MarketMaker extends BaseTrader {
     });
   }
 
-  private double predictTotalDemand() {
-    if (getContext().getTick() == 0) {
-      return 0;
-    } else if (getContext().getTick() < nbStepsPrediction) {
-      return getGlobals().pastTotalDemand.entrySet().stream().mapToDouble(Entry::getValue).sum()
-          / getContext().getTick();
-    }
-    double demandPrediction = getGlobals().pastTotalDemand.entrySet().stream()
-        .filter(a -> a.getKey() >= getContext().getTick() - nbStepsPrediction)
-        .mapToDouble(Entry::getValue).sum();
-    return demandPrediction / nbStepsPrediction;
-  }
-
-  // Predicts the net demand at the current time step using a polynomial fitted to the last 10 points
-  private double predictNetDemand() {
-    if (getContext().getTick() <= getGlobals().derivativeTimeFrame) {
-      return 0;
-    }
-    return new PolynomialFunction(getGlobals().coeffs)
-        .value(getContext().getTick());
-  }
-
-  /* If the net demand is expected to be > 0, from the price dynamics we
-     therefore also expect the price to increase */
-  private boolean priceIncreasePredicted() {
-    return predictNetDemand() > 0;
-  }
-
-  private long getNumberOfTraders() {
-    return getGlobals().nbFundamentalTraders + getGlobals().nbNoiseTraders
-        + getGlobals().nbMomentumTraders;
-  }
-
-  @Override
-  public void buy(double volume) {
-    // Still want to be able to buy even if has no capital since is market maker and can make losses
-    shares += volume;
-    capital -= volume * getGlobals().marketPrice;
-    buyValuesUpdate(volume);
-  }
 
   /*********** OPTION SELLING **********/
 

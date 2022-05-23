@@ -63,11 +63,14 @@ public final class Globals extends GlobalState {
   @Input(name = "Option share number")
   public double optionShareNumber = 10;
 
-  //This can be changed if desired but is set to the interest rate level in Jan 2021
+  // This can be changed if desired but is set to the interest rate level in Jan 2021
   @Input(name = "Interest Rate")
   public double interestRate = 0.028;
 
-  //The number of ticks over which the derivative polynomial is fitted for netDemand
+  @Input(name = "Net interest margin")
+  public double interestMargin = 0.03;
+
+  // The number of ticks over which the derivative polynomial is fitted for netDemand
   @Input(name = "Derivative time frame")
   public double derivativeTimeFrame = 10;
 

@@ -48,6 +48,10 @@ public class OptionTrader extends BaseTrader {
   public void buyPutOption(int expiryTime, double exercisePrice) {
     Option option = new Option(expiryTime, exercisePrice, type.PUT, getGlobals().marketPrice);
     option.setOptionPrice(calculateOptionPrice(option));
+    putValuesUpdate(option);
+  }
+
+  public void putValuesUpdate(Option option){
     getDoubleAccumulator("putOptionsBought").add(1);
     putOptions += 1;
     getLinks(Links.TradeLink.class)
@@ -59,6 +63,10 @@ public class OptionTrader extends BaseTrader {
   public void buyCallOption(int expiryTime, double exercisePrice) {
     Option option = new Option(expiryTime, exercisePrice, type.CALL, getGlobals().marketPrice);
     option.setOptionPrice(calculateOptionPrice(option));
+    callValuesUpdate(option);
+  }
+
+  public void callValuesUpdate(Option option){
     getDoubleAccumulator("callOptionsBought").add(1);
     callOptions += 1;
     getLinks(Links.TradeLink.class)
@@ -201,9 +209,7 @@ public class OptionTrader extends BaseTrader {
     // This is the value of delta for 10 shares since this is what an option represents
     delta = (currentOptionPrice - initialOptionPrice) / (getGlobals().marketPrice / option
         .getInitialStockPrice() * getGlobals().optionShareNumber);
-    System.out.println(calculateD1(option));
     // todo:check that absolute value of call and put delta sum approx to 1
-    // remember delta is for 10 shares, can multiply by 10 here or in deltahedge()
     return delta;
   }
 

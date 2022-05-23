@@ -7,7 +7,7 @@ import swarmModel.links.Links.OpinionLink;
 import swarmModel.links.Messages;
 import swarmModel.links.Messages.OpinionShared;
 
-public class RetailInvestor extends OptionTrader {
+public class RetailInvestor extends Borrower {
 
   @Variable
   public double opinion;
@@ -56,6 +56,7 @@ public class RetailInvestor extends OptionTrader {
       trader.sendShares();
     });
   }
+
   // Updates sensitivity based on how well the trader has been doing recently
   public void updateSensitivity(){
     sensitivity *= (portfolio / previousPortfolio);

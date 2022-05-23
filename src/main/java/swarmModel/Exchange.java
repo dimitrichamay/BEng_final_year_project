@@ -89,7 +89,7 @@ public class Exchange extends Agent<Globals> {
     });
   }
 
-  private long getNumberOfTraders() {
+  public long getNumberOfTraders() {
     return getGlobals().nbFundamentalTraders + getGlobals().nbNoiseTraders
         + getGlobals().nbMomentumTraders + getGlobals().nbHedgeFunds
         + getGlobals().nbRetailInvestors;

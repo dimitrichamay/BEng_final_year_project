@@ -2,6 +2,8 @@ package swarmModel.traders;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
+import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import simudyne.core.abm.Action;
 import simudyne.core.abm.Agent;
 import simudyne.core.annotations.Variable;
@@ -24,6 +26,7 @@ public abstract class BaseTrader extends Agent<Globals> {
   public double portfolio = capital;
 
   protected final double initialMarketPrice = 15;
+  private static final double nbStepsPrediction = 5;
 
   public List<Option> soldOptions = new ArrayList<>();
 
@@ -32,7 +35,7 @@ public abstract class BaseTrader extends Agent<Globals> {
   }
 
   public static Action<BaseTrader> updatePortfolioValues() {
-    return action(trader ->{
+    return action(trader -> {
       trader.updateCapitalForInterest();
       trader.updatePortfolioValue();
     });
@@ -80,7 +83,7 @@ public abstract class BaseTrader extends Agent<Globals> {
     portfolio = shares * getGlobals().marketPrice + capital;
   }
 
-  public void updateCapitalForInterest(){
+  public void updateCapitalForInterest() {
     double dailyInterest = getGlobals().interestRate / 365;
     capital *= (1 + dailyInterest);
   }
@@ -100,4 +103,35 @@ public abstract class BaseTrader extends Agent<Globals> {
   public boolean hasShortPosition() {
     return shares < 0;
   }
+
+  /********* Borrowing and Price predictions **********/
+
+  protected double predictTotalDemand() {
+    if (getContext().getTick() == 0) {
+      return 0;
+    } else if (getContext().getTick() < nbStepsPrediction) {
+      return getGlobals().pastTotalDemand.entrySet().stream().mapToDouble(Entry::getValue).sum()
+          / getContext().getTick();
+    }
+    double demandPrediction = getGlobals().pastTotalDemand.entrySet().stream()
+        .filter(a -> a.getKey() >= getContext().getTick() - nbStepsPrediction)
+        .mapToDouble(Entry::getValue).sum();
+    return demandPrediction / nbStepsPrediction;
+  }
+
+  // Predicts the net demand at the current time step using a polynomial fitted to the last 10 points
+  protected double predictNetDemand(double tickOffset) {
+    if (getContext().getTick() <= getGlobals().derivativeTimeFrame) {
+      return 0;
+    }
+    return new PolynomialFunction(getGlobals().coeffs)
+        .value(getContext().getTick() + tickOffset);
+  }
+
+  /* If the net demand is expected to be > 0, from the price dynamics we
+     therefore also expect the price to increase */
+  protected boolean priceIncreasePredicted() {
+    return predictNetDemand(0) > 0;
+  }
+
 }
