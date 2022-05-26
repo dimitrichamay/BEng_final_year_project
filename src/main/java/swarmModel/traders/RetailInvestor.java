@@ -1,8 +1,5 @@
 package swarmModel.traders;
 
-import java.util.Map.Entry;
-import java.util.stream.Collectors;
-import org.apache.commons.math3.random.RandomGenerator;
 import simudyne.core.abm.Action;
 import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
@@ -10,17 +7,20 @@ import swarmModel.links.Links.OpinionLink;
 import swarmModel.links.Messages;
 import swarmModel.links.Messages.OpinionShared;
 
-public class RetailInvestor extends BaseTrader {
+public class RetailInvestor extends Borrower {
 
   @Variable
   public double opinion;
 
-  RandomGenerator random;
+  // How a change in opinion affects the aggressiveness of trade
+  @Variable
+  public double sensitivity;
 
   @Override
   public void init() {
-    random = this.getPrng().generator;
+    capital = 500;
     opinion = getPrng().uniform(-2, 4).sample();
+    sensitivity = getPrng().uniform(0, 1).sample();
   }
 
   private static Action<RetailInvestor> action(SerializableConsumer<RetailInvestor> consumer) {
@@ -33,29 +33,51 @@ public class RetailInvestor extends BaseTrader {
         .send(OpinionShared.class, (msg, link) -> msg.opinion = trader.opinion));
   }
 
-  public static Action<RetailInvestor> processInformation() {
+  public static Action<RetailInvestor> updateOpinion(){
     return action(trader -> {
-      if (trader.getContext().getTick() > trader.getGlobals().timeToStartOpinionSharing) {
-        if (trader.isTrading()) {
-          trader.tradeOnOpinion(trader.opinion);
-        }
-        double generalOpinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
-            .mapToDouble(opinion -> opinion.opinion).average().orElse(0);
-        if (generalOpinion != 0 && trader.getContext().getTick() % 3 == 0) {
+      double generalOpinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
+          .mapToDouble(opinion -> opinion.opinion).average().orElse(0);
+      if (generalOpinion != 0 && trader.getContext().getTick() % 3 == 0) {
           /* Updated trader opinion is an average between their own opinion and those around them
              every 3 time steps */
-          trader.opinion = (generalOpinion + trader.opinion) / 2;
-        }
+        trader.opinion = (generalOpinion + trader.opinion) / 2;
       }
     });
   }
 
-  private boolean isTrading() {
-    return getPrng().uniform(0, 1).sample() > 0.4;
+  public static Action<RetailInvestor> processInformation() {
+    return action(trader -> {
+      // We update the sensitivity of the traders opinion trading every 5 steps
+      if (trader.getContext().getTick() % 5 == 0 && trader.getContext().getTick() > 1){
+        trader.updateSensitivity();
+      }
+      if (trader.getContext().getTick() > trader.getGlobals().timeToStartOpinionSharing) {
+        if (trader.isTrading()) {
+          trader.tradeOnOpinion(trader.opinion, trader.sensitivity);
+        }
+      }
+      trader.deltaHedge();
+      trader.sendShares();
+    });
   }
 
-  public static Action<RetailInvestor> processOptions() {
-    return action(trader -> {
-    });
+  // Updates sensitivity based on how well the trader has been doing recently
+  public void updateSensitivity(){
+    if (portfolio > previousPortfolio){
+      sensitivity += 0.025;
+    } else {
+      sensitivity -= 0.025;
+    }
+    // Cannot have sensitivity greater than 1
+    if (sensitivity > 1){
+      sensitivity = 1;
+    } else if (sensitivity < 0){
+      sensitivity = 0;
+    }
+    previousPortfolio = portfolio;
+  }
+
+  private boolean isTrading() {
+    return getPrng().uniform(0, 1).sample() > 0.4;
   }
 }

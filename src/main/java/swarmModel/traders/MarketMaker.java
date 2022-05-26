@@ -17,11 +17,11 @@ public class MarketMaker extends BaseTrader {
 
   private static final double maxThreshold = 0.5;
 
-  private static final double nbStepsPrediction = 5;
 
   private final double priceToStartCoverPos = initialMarketPrice * 1.5;
   private final double priceToCoverHalfPos = initialMarketPrice * 3;
   private final double priceToCoverPos = initialMarketPrice * 5;
+  private final double compensationFactor = 0.01;
 
   private int sharesToBuy = 0;
   private int sharesToSell = 0;
@@ -33,16 +33,25 @@ public class MarketMaker extends BaseTrader {
 
   public static Action<MarketMaker> processInformation() {
     return action(marketMaker -> {
-      double predictNetDemand = marketMaker.predictNetDemand();
-      // Adds liquidity on other side of the market if large disparity in demand
-      if (Math.abs(predictNetDemand / marketMaker.predictTotalDemand()) > maxThreshold) {
-        long compensation = Math.round(Math.abs(predictNetDemand) * 0.01);
-        if (predictNetDemand > 0) {
-          marketMaker.sell(compensation);
-        } else {
-          marketMaker.buy(compensation);
+      double predictNetDemand = marketMaker.predictNetDemand(0);
+      double predictTotalDemand = marketMaker.predictTotalDemand();
+      if (predictTotalDemand > 0) {
+
+        // Adds liquidity on other side of the market if large disparity in demand
+        if (Math.abs(predictNetDemand / predictTotalDemand) > maxThreshold) {
+          long compensation = Math
+              .round(Math.abs(predictNetDemand) * marketMaker.compensationFactor);
+
+          if (predictNetDemand > 0) {
+            marketMaker.sell(compensation);
+          } else {
+            marketMaker.buy(compensation);
+          }
         }
       }
+
+      marketMaker.sellCallOptions();
+      marketMaker.sellPutOptions();
 
       marketMaker.sell(marketMaker.sharesToSell);
       marketMaker.buy(marketMaker.sharesToBuy);
@@ -53,57 +62,6 @@ public class MarketMaker extends BaseTrader {
     });
   }
 
-  public static Action<MarketMaker> processOptionSales() {
-    return action(marketMaker -> {
-      marketMaker.sellCallOptions();
-      marketMaker.sellPutOptions();
-    });
-  }
-
-  private double predictTotalDemand() {
-    if (getContext().getTick() == 0) {
-      return 1000000; //Return large integer to prevent trading before we have information
-    } else if (getContext().getTick() < nbStepsPrediction) {
-      return getGlobals().pastTotalDemand.entrySet().stream().mapToDouble(Entry::getValue).sum()
-          / getContext().getTick();
-    }
-    double demandPrediction = getGlobals().pastTotalDemand.entrySet().stream()
-        .filter(a -> a.getKey() >= getContext().getTick() - nbStepsPrediction)
-        .mapToDouble(Entry::getValue).sum();
-    if (demandPrediction == 0) {
-      return 1000000; //Return large integer to prevent trading before we have information
-    }
-    return demandPrediction / nbStepsPrediction;
-  }
-
-  // Predicts the net demand at the current time step using a polynomial fitted to the last 10 points
-  private double predictNetDemand() {
-    if (getContext().getTick() <= getGlobals().derivativeTimeFrame) {
-      return 0;
-    }
-    return new PolynomialFunction(getGlobals().coeffs)
-        .value(getContext().getTick());
-  }
-
-  /* If the net demand is expected to be > 0, from the price dynamics we
-     therefore also expect the price to increase */
-  private boolean priceIncreasePredicted() {
-    return predictNetDemand() > 0;
-  }
-
-  private long getNumberOfTraders() {
-    return getGlobals().nbFundamentalTraders + getGlobals().nbNoiseTraders
-        + getGlobals().nbMomentumTraders;
-  }
-
-  @Override
-  public void buy(double volume) {
-    // Still want to be able to buy even if has no capital since is market maker and can make losses
-    shares += volume;
-    capital -= volume * getGlobals().marketPrice;
-    buyValuesUpdate(volume);
-    updatePortfolioValue();
-  }
 
   /*********** OPTION SELLING **********/
 
@@ -112,7 +70,7 @@ public class MarketMaker extends BaseTrader {
       Option option = putOptionBought.option;
       soldOptions.add(option);
       capital += option.getOptionPrice();
-      sharesToSell += 10;
+      sharesToSell += getGlobals().optionShareNumber;
     });
   }
 
@@ -121,7 +79,7 @@ public class MarketMaker extends BaseTrader {
       Option option = callOptionBought.option;
       soldOptions.add(option);
       capital += option.getOptionPrice();
-      sharesToBuy += 10;
+      sharesToBuy += getGlobals().optionShareNumber;
     });
   }
 

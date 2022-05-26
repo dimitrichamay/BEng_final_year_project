@@ -2,59 +2,57 @@ package swarmModel.traders;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.apache.commons.math3.distribution.NormalDistribution;
+import java.util.Map.Entry;
+import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import simudyne.core.abm.Action;
 import simudyne.core.abm.Agent;
 import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
 import swarmModel.Globals;
-import swarmModel.links.Links;
 import swarmModel.links.Links.TradeLink;
-import swarmModel.links.Messages;
 import swarmModel.links.Messages.BuyOrderPlaced;
 import swarmModel.links.Messages.SellOrderPlaced;
 import swarmModel.utils.Option;
-import swarmModel.utils.Option.type;
 
 public abstract class BaseTrader extends Agent<Globals> {
 
   @Variable
-  public double capital = 10000;
+  public double capital = 0;
 
   @Variable
   public double shares = 0;
 
   @Variable
-  public double putOptions = 0;
+  public double portfolio = capital;
 
-  @Variable
-  public double callOptions = 0;
-
-  //todo: update this 15 to be the initial price in the model
-  @Variable
-  public double portfolio = shares * 15 + capital;
-
-  private double minCapitalToShort = 1;
-
-  public double sharesToSend = 0;
   protected final double initialMarketPrice = 15;
+  private static final double nbBackStepsPrediction = 5;
 
-
-  public List<Option> boughtOptions = new ArrayList<>();
   public List<Option> soldOptions = new ArrayList<>();
+
+  @Override
+  public void init() {
+    capital = 10000;
+    super.init();
+  }
 
   private static Action<BaseTrader> action(SerializableConsumer<BaseTrader> consumer) {
     return Action.create(BaseTrader.class, consumer);
   }
 
+  public static Action<BaseTrader> updatePortfolioValues() {
+    return action(trader -> {
+      trader.updateCapitalForInterest();
+      trader.updatePortfolioValue();
+    });
+  }
+
+  /* We allow buying when we have 0 capital since we are
+     looking at overall portfolio value as an indicator of wealth */
   public void buy(double volume) {
-    // TODO: allow negative capital?
-    //if (capital > volume * getGlobals().marketPrice) {
     shares += volume;
     capital -= volume * getGlobals().marketPrice;
     buyValuesUpdate(volume);
-    updatePortfolioValue();
-
   }
 
   public void buyValuesUpdate(double volume) {
@@ -79,7 +77,6 @@ public abstract class BaseTrader extends Agent<Globals> {
       shares -= toSell;
       capital += toSell * getGlobals().marketPrice;
       sellValuesUpdate(toSell);
-      updatePortfolioValue();
     }
   }
 
@@ -89,209 +86,58 @@ public abstract class BaseTrader extends Agent<Globals> {
   }
 
   public void updatePortfolioValue() {
-    portfolio = shares * getGlobals().marketPrice + capital + calculateOptionPortfolioValue();
+    portfolio = shares * getGlobals().marketPrice + capital;
+  }
+
+  public void updateCapitalForInterest() {
+    double dailyInterest = getGlobals().interestRate / 365;
+    capital *= (1 + dailyInterest);
   }
 
   /******************* Short Selling ******************/
 
   // Trader borrows shares and sells them, creating a margin account
   public void shortStock(int volume) {
-    //todo: change this back
-    //if (canAffordToShortStock(volume)) {
     shares -= volume;
     capital += volume * getGlobals().marketPrice;
     getDoubleAccumulator("shorts").add(volume);
 
     //Update sell order numbers
     sellValuesUpdate(volume);
-    updatePortfolioValue();
-    // }
   }
 
-  protected boolean canAffordToShortStock(int volume) {
-    if (shares == 0) {
-      return capital >= minCapitalToShort * (volume * getGlobals().marketPrice);
-    } else {
-      // Shares < 0 since cannot short sell if have shares
-      return capital >= minCapitalToShort * (Math.abs(shares) + volume) * getGlobals().marketPrice;
-    }
-  }
-
-  protected boolean hasShortPositions() {
+  public boolean hasShortPosition() {
     return shares < 0;
   }
 
-  /******************* Options Trading ******************/
+  /********* Borrowing and Price predictions **********/
 
-  // Each option is valid for 10 shares of the stock (used to simplify values instead of 100)
-  public void buyPutOption(int expiryTime, double exercisePrice) {
-    Option option = new Option(expiryTime, exercisePrice, type.PUT);
-    initiateOptionPrice(option);
-    getDoubleAccumulator("putOptionsBought").add(1);
-    putOptions += 1;
-    getLinks(Links.TradeLink.class)
-        .send(Messages.PutOptionBought.class, (msg, link) -> msg.option = option);
-    boughtOptions.add(option);
-    capital -= option.getOptionPrice();
-    updatePortfolioValue();
-  }
-
-  public void buyCallOption(int expiryTime, double exercisePrice) {
-    Option option = new Option(expiryTime, exercisePrice, type.CALL);
-    initiateOptionPrice(option);
-    getDoubleAccumulator("callOptionsBought").add(1);
-    callOptions += 1;
-    getLinks(Links.TradeLink.class)
-        .send(Messages.CallOptionBought.class, (msg, link) -> msg.option = option);
-    boughtOptions.add(option);
-    capital -= option.getOptionPrice();
-    updatePortfolioValue();
-  }
-
-  // Update each Option on every time step
-  public static Action<BaseTrader> updateOptions() {
-    return action(trader -> {
-      double total = 0;
-      if (trader.getContext().getTick() > 0) {
-        List<Option> expiredOptions = new ArrayList<>();
-        for (Option option : trader.boughtOptions) {
-          boolean expired = option.timeStep();
-          if (expired) {
-            double toSend = trader.actOnOption(option);
-            total += toSend;
-            expiredOptions.add(option);
-            if (option.isCallOption()) {
-              trader.callOptions--;
-            } else {
-              trader.putOptions--;
-            }
-          }
-        }
-        trader.boughtOptions.removeAll(expiredOptions);
-      }
-      trader.sharesToSend = total;
-    });
-  }
-
-  public double actOnOption(Option option) {
-    if (option.isCallOption() && getGlobals().marketPrice > option.getExercisePrice()) {
-      capital += (getGlobals().marketPrice - option.getExercisePrice()) * 10;
-      updatePortfolioValue();
-      return 10;
-    } else if (!option.isCallOption() && getGlobals().marketPrice < option.getExercisePrice()) {
-      capital += (option.getExercisePrice() - getGlobals().marketPrice) * 10;
-      updatePortfolioValue();
-      return -10;
+  protected double predictTotalDemand() {
+    if (getContext().getTick() == 0) {
+      return 0;
+    } else if (getContext().getTick() < nbBackStepsPrediction) {
+      return getGlobals().pastTotalDemand.entrySet().stream().mapToDouble(Entry::getValue).sum()
+          / getContext().getTick();
     }
-    return 0;
+    double demandPrediction = getGlobals().pastTotalDemand.entrySet().stream()
+        .filter(a -> a.getKey() >= getContext().getTick() - nbBackStepsPrediction)
+        .mapToDouble(Entry::getValue).sum();
+    return demandPrediction / nbBackStepsPrediction;
   }
 
-  public void sendShares() {
-    if (sharesToSend == 0) {
-      return;
+  // Predicts the net demand at the current time step using a polynomial fitted to the last 10 points
+  public double predictNetDemand(double tickOffset) {
+    if (getContext().getTick() <= getGlobals().derivativeTimeFrame) {
+      return 0;
     }
-    if (sharesToSend > 0) {
-      buyValuesUpdate(Math.abs(sharesToSend));
-    } else {
-      sellValuesUpdate(Math.abs(sharesToSend));
-    }
-    sharesToSend = 0;
+    return new PolynomialFunction(getGlobals().coeffs)
+        .value(getContext().getTick() + tickOffset);
   }
 
-  // TODO: account for time decay in option valuation
-  public double calculateOptionPortfolioValue() {
-    double value = 0;
-    for (Option option : boughtOptions) {
-      if (option.isCallOption()) {
-        value += Math.max(
-            (getGlobals().marketPrice - option.getExercisePrice()) * 10,
-            0);
-      } else {
-        value += Math.max(
-            (option.getExercisePrice() - getGlobals().marketPrice) * 10,
-            0);
-      }
-    }
-    for (Option option : soldOptions) {
-      if (option.isCallOption()) {
-        value -= Math.max(
-            (getGlobals().marketPrice - option.getExercisePrice()) * 10,
-            0);
-      } else {
-        value -= Math.max(
-            (option.getExercisePrice() - getGlobals().marketPrice) * 10,
-            0);
-      }
-    }
-    return value;
+  /* If the net demand is expected to be > 0, from the price dynamics we
+     therefore also expect the price to increase */
+  protected boolean priceIncreasePredicted() {
+    return predictNetDemand(0) > 0;
   }
 
-  public List<Option> getBoughtOptions() {
-    return boughtOptions;
-  }
-
-  public List<Option> getSoldOptions() {
-    return soldOptions;
-  }
-
-  public void initiateOptionPrice(Option option) {
-    /* Black Scholes Equation: Cost = Stock price * N(d1) - Exercise price * e^(-interestRate * timeToExpiry) * N(d2)
-       where N(d1) and N(d2) are cumulative distribution functions for the normal distribution */
-    double stockPrice = getGlobals().marketPrice;
-    double exercisePrice = option.getExercisePrice();
-    double r = getGlobals().interestRate;
-    double timeToExpiry = option.getTimeToExpiry();
-    // Time to expiry is represented in years for these calculations, each timeStep = 1 day
-    //todo: check that steps are 1 month long
-    timeToExpiry = timeToExpiry / 12;
-    double d1 = (1 / (getGlobals().volatility * Math.sqrt(timeToExpiry))) * (
-        Math.log(stockPrice / exercisePrice)
-            + (r + Math.pow(getGlobals().volatility, 2)) * timeToExpiry);
-    double d2 = d1 - getGlobals().volatility * timeToExpiry;
-    if (option.isCallOption()) {
-      option.setOptionPrice((stockPrice * getNormalDistribution(d1)
-          - exercisePrice * Math.exp(-r * timeToExpiry)
-          * getNormalDistribution(d2)) / 10);
-    } else {
-      /*option.setOptionPrice(getNormalDistribution(-d2) * exercisePrice
-          * Math.exp(-r * timeToExpiry)
-          - getNormalDistribution(-d1) * stockPrice);*/
-      option.setOptionPrice((stockPrice * getNormalDistribution(d1)
-          - exercisePrice * Math.exp(-r * timeToExpiry)
-          * getNormalDistribution(d2)) / 10);
-    }
-  }
-
-  private double getNormalDistribution(double d) {
-    NormalDistribution normalDistribution = new NormalDistribution();
-    return normalDistribution.cumulativeProbability(d);
-  }
-
-  /******************* Opinion Dynamics ******************/
-
-  protected void tradeOnOpinion(double generalOpinion) {
-    if (generalOpinion > 12) {
-      buy(3);
-      buyCallOption(15, getGlobals().marketPrice * 1.1);
-    } else if (generalOpinion > 7) {
-      buy(1);
-      buyCallOption(10, getGlobals().marketPrice * 1.1);
-    } else if (inRange(generalOpinion, 1, 7)) {
-      buy(1);
-    } else if (inRange(generalOpinion, -7, -1)) {
-      sell(1);
-    } else if (generalOpinion < -12) {
-      sell(3);
-    } else if (generalOpinion < -7) {
-      sell(1);
-      buyPutOption(10, getGlobals().marketPrice * 0.9);
-    }
-    // Do nothing if opinion is in range (-1, 1) as neutral position
-  }
-
-  ;
-
-  private boolean inRange(double x, int lower, int upper) {
-    return x >= lower && x <= upper;
-  }
 }

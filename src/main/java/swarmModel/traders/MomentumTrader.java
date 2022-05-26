@@ -11,7 +11,7 @@ import swarmModel.links.Messages;
    This agent is an example implementation of a moving average trading strategy
 */
 
-public class MomentumTrader extends BaseTrader {
+public class MomentumTrader extends Borrower {
 
   @Variable(name = "Long Term Moving Average")
   public double longTermMovingAvg;
@@ -19,9 +19,18 @@ public class MomentumTrader extends BaseTrader {
   @Variable(name = "Short Term Moving Average")
   public double shortTermMovingAvg;
 
+  private double generalOpinion = 0;
+
   // Helper function for ease of interpretation
   private static Action<MomentumTrader> action(SerializableConsumer<MomentumTrader> consumer) {
     return Action.create(MomentumTrader.class, consumer);
+  }
+
+  public static Action<MomentumTrader> updateOpinion(){
+    return action(trader -> {
+      trader.generalOpinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
+          .mapToDouble(opinion -> opinion.opinion).average().orElse(0);
+    });
   }
 
   public static Action<MomentumTrader> processInformation() {
@@ -36,51 +45,30 @@ public class MomentumTrader extends BaseTrader {
                     trader.getGlobals().historicalPrices);
             double probToBuy = trader.getPrng().uniform(0, 1).sample();
 
-            int volume = 1;
             if (trader.shortTermMovingAvg > trader.longTermMovingAvg && probToBuy < trader
                 .getGlobals().traderActivity) {
-              trader.buy(volume);
-              // If significant movement buy a lot more
-              if (trader.shortTermMovingAvg > 1.1 * trader.longTermMovingAvg){
-                trader.buy(10);
-              }
+              trader.buy(trader.getGlobals().stdVolume);
             } else if ((trader.shortTermMovingAvg < trader.longTermMovingAvg && probToBuy < trader
                 .getGlobals().traderActivity)) {
-              trader.sell(volume);
-              // If significant movement sell quickly
-              if (trader.shortTermMovingAvg < 0.9 * trader.longTermMovingAvg){
-                trader.sell(10);
-              }
+              trader.sell(trader.getGlobals().stdVolume);
             }
           }
-          trader.sendShares();
 
           // Momentum buy medium-term options based on the general population opinion every 5 steps
           if (trader.getContext().getTick() > trader.getGlobals().timeToStartOpinionSharing
               && trader.getContext().getTick() % 5 == 0) {
-            double generalOpinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
-                .mapToDouble(opinion -> opinion.opinion).average().orElse(0);
-            if (generalOpinion > 0) {
-              trader.buyCallOption(20, trader.getGlobals().marketPrice * 1.1);
+
+            if (trader.generalOpinion > 0) {
+              trader.buyCallOption(trader.optionExpiryTime,
+                  trader.getGlobals().marketPrice * trader.getGlobals().callStrikeFactor);
             } else {
-              trader.buyPutOption(20, trader.getGlobals().marketPrice * 0.9);
+              trader.buyPutOption(trader.optionExpiryTime,
+                  trader.getGlobals().marketPrice * trader.getGlobals().putStrikeFactor);
             }
           }
+          trader.deltaHedge();
+          trader.sendShares();
         });
-  }
-
-  public static Action<MomentumTrader> processOptions() {
-    return action(trader -> {
-      double tradingThresh = trader.getPrng().uniform(0, 1).sample();
-      double probToBuy = trader.getPrng().uniform(0, 1).sample();
-      if (probToBuy < trader.getGlobals().noiseActivity) {
-        if (Math.abs(tradingThresh) > 0.95) {
-          trader.buyCallOption(20, trader.getGlobals().marketPrice * 1.1);
-        } else if (Math.abs(tradingThresh) < 0.05) {
-          trader.buyPutOption(20, trader.getGlobals().marketPrice * 0.9);
-        }
-      }
-    });
   }
 
 

@@ -1,29 +1,35 @@
 package swarmModel;
 
 import java.util.Map.Entry;
+import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import simudyne.core.abm.AgentBasedModel;
 import simudyne.core.abm.Group;
 import simudyne.core.abm.Split;
 import simudyne.core.annotations.ModelSettings;
 import simudyne.core.rng.SeededRandom;
 import swarmModel.links.Links;
+import swarmModel.links.Links.BorrowLink;
 import swarmModel.links.Links.OpinionLink;
+import swarmModel.traders.Bank;
+import swarmModel.traders.BaseTrader;
+import swarmModel.traders.Borrower;
 import swarmModel.traders.FundamentalTrader;
 import swarmModel.traders.HedgeFund;
 import swarmModel.traders.Initiator;
 import swarmModel.traders.MarketMaker;
 import swarmModel.traders.MomentumTrader;
 import swarmModel.traders.NoiseTrader;
+import swarmModel.traders.OptionTrader;
 import swarmModel.traders.RetailInvestor;
 
-@ModelSettings(macroStep = 150, timeUnit = "DAYS", start = "2021-01-01T00:00:00Z", id = "GME_squeeze")
+@ModelSettings(timeUnit = "DAYS", start = "2021-01-01T00:00:00Z", id = "GME_squeeze", macroStep = 150)
 public class TradingModel extends AgentBasedModel<Globals> {
 
   {
     registerAgentTypes(MarketMaker.class, NoiseTrader.class, MomentumTrader.class,
         FundamentalTrader.class, Exchange.class, HedgeFund.class, Initiator.class,
-        RetailInvestor.class);
-    registerLinkTypes(Links.TradeLink.class, OpinionLink.class);
+        RetailInvestor.class, Bank.class);
+    registerLinkTypes(Links.TradeLink.class, OpinionLink.class, BorrowLink.class);
     createDoubleAccumulator("buys", "Number of buy orders");
     createDoubleAccumulator("sells", "Number of sell orders");
     createDoubleAccumulator("price", "Price");
@@ -43,11 +49,11 @@ public class TradingModel extends AgentBasedModel<Globals> {
     Group<MarketMaker> marketMakerGroup = generateGroup(MarketMaker.class,
         1);
     Group<Exchange> exchange = generateGroup(Exchange.class, 1);
-    //TODO: change these numbers
     Group<HedgeFund> hedgeFundGroup = generateGroup(HedgeFund.class, getGlobals().nbHedgeFunds);
     Group<Initiator> initiatorGroup = generateGroup(Initiator.class, getGlobals().nbInitiators);
     Group<RetailInvestor> retailInvestorGroup = generateGroup(RetailInvestor.class,
         getGlobals().nbRetailInvestors);
+    Group<Bank> bankGroup = generateGroup(Bank.class, 1);
 
     // Setup of trade links
     marketMakerGroup.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
@@ -61,7 +67,6 @@ public class TradingModel extends AgentBasedModel<Globals> {
     marketMakerGroup.fullyConnected(retailInvestorGroup, Links.TradeLink.class);
     retailInvestorGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
     marketMakerGroup.fullyConnected(initiatorGroup, Links.TradeLink.class);
-    initiatorGroup.fullyConnected(marketMakerGroup, Links.TradeLink.class);
 
     marketMakerGroup.fullyConnected(exchange, Links.TradeLink.class);
     momentumTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
@@ -69,7 +74,6 @@ public class TradingModel extends AgentBasedModel<Globals> {
     fundamentalTraderGroup.fullyConnected(exchange, Links.TradeLink.class);
     hedgeFundGroup.fullyConnected(exchange, Links.TradeLink.class);
     retailInvestorGroup.fullyConnected(exchange, Links.TradeLink.class);
-    // initiatorGroup.fullyConnected(exchange, Links.TradeLink.class);
 
     exchange.fullyConnected(momentumTraderGroup, Links.TradeLink.class);
     exchange.fullyConnected(noiseTraderGroup, Links.TradeLink.class);
@@ -77,18 +81,22 @@ public class TradingModel extends AgentBasedModel<Globals> {
     exchange.fullyConnected(marketMakerGroup, Links.TradeLink.class);
     exchange.fullyConnected(hedgeFundGroup, Links.TradeLink.class);
     exchange.fullyConnected(retailInvestorGroup, Links.TradeLink.class);
-    //exchange.fullyConnected(initiatorGroup, Links.TradeLink.class);
 
     // Setup of Opinion Links
 
     retailInvestorGroup.gridConnected(Links.OpinionLink.class).width(2);
     initiatorGroup.partitionConnected(retailInvestorGroup, Links.OpinionLink.class).shard();
-
-    initiatorGroup.fullyConnected(noiseTraderGroup, Links.OpinionLink.class);
     initiatorGroup.fullyConnected(momentumTraderGroup, Links.OpinionLink.class);
-    initiatorGroup.fullyConnected(fundamentalTraderGroup, Links.OpinionLink.class);
-    initiatorGroup.fullyConnected(marketMakerGroup, Links.OpinionLink.class);
-    initiatorGroup.fullyConnected(hedgeFundGroup, Links.OpinionLink.class);
+
+    // Setup of Borrowing Links
+
+    fundamentalTraderGroup.fullyConnected(bankGroup, Links.BorrowLink.class);
+    momentumTraderGroup.fullyConnected(bankGroup, Links.BorrowLink.class);
+    retailInvestorGroup.fullyConnected(bankGroup, Links.BorrowLink.class);
+
+    bankGroup.fullyConnected(fundamentalTraderGroup, Links.BorrowLink.class);
+    bankGroup.fullyConnected(momentumTraderGroup, Links.BorrowLink.class);
+    bankGroup.fullyConnected(retailInvestorGroup, Links.BorrowLink.class);
 
     super.setup();
   }
@@ -97,33 +105,39 @@ public class TradingModel extends AgentBasedModel<Globals> {
   public void step() {
     super.step();
 
-    // We update the interest rate every 10 iterations
-    if (getContext().getTick() % 5 == 0 && getContext().getTick() > 20) {
-      updateInterestRate();
+    // We update the interest rate every 5 iterations
+    if (getGlobals().variableInterestRates && getContext().getTick() % 5 == 0
+        && getContext().getTick() > 20) {
+     // updateInterestRate();
     }
+
     updateHistoricalPrices();
-    run(Exchange.addNetDemand());
-    run(Exchange.addTotalDemand());
-    run(Exchange.updatePolynomial());
-    run(
-        Split.create(NoiseTrader.updateOptions(),
-            FundamentalTrader.updateOptions(),
-            MomentumTrader.updateOptions())
+    updateProjectedPrice();
+    System.out.println("Tick " + getContext().getTick() + " Price: " + getGlobals().marketPrice);
+    run(Exchange.updateDemandPrediction());
+
+    run(OptionTrader.updateOptions());
+
+
+    run(Borrower.processBorrowing(),
+
+        Bank.lendMoney(),
+
+        Borrower.actOnLoan()
     );
 
-    run(
-        Split.create(NoiseTrader.processOptions(),
-            FundamentalTrader.processOptions(),
-            MomentumTrader.processOptions()),
-
-        MarketMaker.processOptionSales()
-    );
 
     run(
         Split.create(
             RetailInvestor.shareOpinion(),
             Initiator.shareOpinion()),
+        Split.create(
+            RetailInvestor.updateOpinion(),
+            MomentumTrader.updateOpinion()
+        )
+    );
 
+    run(
         Split.create(
             NoiseTrader.processInformation(),
             MomentumTrader.processInformation(),
@@ -133,7 +147,7 @@ public class TradingModel extends AgentBasedModel<Globals> {
             HedgeFund.processInformation()),
 
         Exchange.calculateBuyAndSellPrice(),
-        NoiseTrader.updateThreshold()
+        BaseTrader.updatePortfolioValues()
     );
   }
 
@@ -160,7 +174,6 @@ public class TradingModel extends AgentBasedModel<Globals> {
     return r.generator.nextGaussian();
   }
 
-  //todo: fix this volatility measure so stops giving 0
   // We use the standard deviation as a measure for the volatility of the price
   private double calculateVolatility(int timeFrame) {
     if (getGlobals().historicalPrices.isEmpty()) {
@@ -172,8 +185,37 @@ public class TradingModel extends AgentBasedModel<Globals> {
     double squaredDevs = getGlobals().historicalPrices.entrySet().stream()
         .filter(a -> a.getKey() >= getContext().getTick() - timeFrame).mapToDouble(Entry::getValue)
         .map(a -> Math.pow((mean - a), 2)).sum();
-    //getGlobals().volatility = Math.sqrt(squaredDevs / timeFrame);
-    getGlobals().volatility = 1;
+    getGlobals().volatility = Math.sqrt(squaredDevs / timeFrame);
     return getGlobals().volatility;
+  }
+
+  private void updateProjectedPrice(){
+    getGlobals().projectedPrice = getGlobals().marketPrice +
+        calculateProjectedPriceChange(1);
+  }
+
+  public double calculateProjectedPriceChange(double t) {
+    // Net Demand Prediction in t steps time
+    double netDemand = predictNetDemand(t);
+    return (netDemand / getNumberOfTraders()) / getGlobals().lambda;
+  }
+
+  private double getLendingRate() {
+    return getGlobals().interestRate + getGlobals().interestMargin;
+  }
+
+  private long getNumberOfTraders() {
+    return getGlobals().nbFundamentalTraders + getGlobals().nbNoiseTraders
+        + getGlobals().nbMomentumTraders + getGlobals().nbHedgeFunds
+        + getGlobals().nbRetailInvestors;
+  }
+
+  // Predicts the net demand at the current time step using a polynomial fitted to the last 10 points
+  public double predictNetDemand(double tickOffset) {
+    if (getContext().getTick() <= getGlobals().derivativeTimeFrame) {
+      return 0;
+    }
+    return new PolynomialFunction(getGlobals().coeffs)
+        .value(getContext().getTick() + tickOffset);
   }
 }
