@@ -47,6 +47,7 @@ public class Messages {
   }
 
   public static class PayBackLoan extends Message {
-    public double amountToPayBack;
+    public double originalLoanRepayment;
+    public double interestPaidBack;
   }
 }

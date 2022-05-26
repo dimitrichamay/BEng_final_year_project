@@ -7,13 +7,14 @@ import simudyne.core.functions.SerializableConsumer;
 
 public class NoiseTrader extends OptionTrader {
 
-
-  RandomGenerator random;
   @Variable
   public double tradingThresh;
 
+  RandomGenerator random;
+
   @Override
   public void init() {
+    capital = 5000;
     random = this.getPrng().generator;
     tradingThresh = getPrng().uniform(0, 1).sample();
   }

@@ -50,9 +50,8 @@ public class MarketMaker extends BaseTrader {
         }
       }
 
-      //todo: this currently does nothing
-     // marketMaker.sellCallOptions();
-     // marketMaker.sellPutOptions();
+      marketMaker.sellCallOptions();
+      marketMaker.sellPutOptions();
 
       marketMaker.sell(marketMaker.sharesToSell);
       marketMaker.buy(marketMaker.sharesToBuy);

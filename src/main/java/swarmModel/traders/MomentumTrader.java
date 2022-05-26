@@ -19,9 +19,18 @@ public class MomentumTrader extends Borrower {
   @Variable(name = "Short Term Moving Average")
   public double shortTermMovingAvg;
 
+  private double generalOpinion = 0;
+
   // Helper function for ease of interpretation
   private static Action<MomentumTrader> action(SerializableConsumer<MomentumTrader> consumer) {
     return Action.create(MomentumTrader.class, consumer);
+  }
+
+  public static Action<MomentumTrader> updateOpinion(){
+    return action(trader -> {
+      trader.generalOpinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
+          .mapToDouble(opinion -> opinion.opinion).average().orElse(0);
+    });
   }
 
   public static Action<MomentumTrader> processInformation() {
@@ -35,22 +44,21 @@ public class MomentumTrader extends Borrower {
                 .getTermMovingAvg(trader.getGlobals().shortTermAverage,
                     trader.getGlobals().historicalPrices);
             double probToBuy = trader.getPrng().uniform(0, 1).sample();
-            double increaseExpectation = trader.shortTermMovingAvg / trader.longTermMovingAvg;
+
             if (trader.shortTermMovingAvg > trader.longTermMovingAvg && probToBuy < trader
                 .getGlobals().traderActivity) {
-              trader.buy(Math.round(trader.getGlobals().stdVolume * increaseExpectation));
+              trader.buy(trader.getGlobals().stdVolume);
             } else if ((trader.shortTermMovingAvg < trader.longTermMovingAvg && probToBuy < trader
                 .getGlobals().traderActivity)) {
-              trader.sell(Math.round(trader.getGlobals().stdVolume * (1 / increaseExpectation)));
+              trader.sell(trader.getGlobals().stdVolume);
             }
           }
 
           // Momentum buy medium-term options based on the general population opinion every 5 steps
           if (trader.getContext().getTick() > trader.getGlobals().timeToStartOpinionSharing
               && trader.getContext().getTick() % 5 == 0) {
-            double generalOpinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
-                .mapToDouble(opinion -> opinion.opinion).average().orElse(0);
-            if (generalOpinion > 0) {
+
+            if (trader.generalOpinion > 0) {
               trader.buyCallOption(trader.optionExpiryTime,
                   trader.getGlobals().marketPrice * trader.getGlobals().callStrikeFactor);
             } else {

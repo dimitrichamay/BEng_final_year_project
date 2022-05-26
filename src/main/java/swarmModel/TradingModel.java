@@ -1,6 +1,7 @@
 package swarmModel;
 
 import java.util.Map.Entry;
+import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import simudyne.core.abm.AgentBasedModel;
 import simudyne.core.abm.Group;
 import simudyne.core.abm.Split;
@@ -105,13 +106,18 @@ public class TradingModel extends AgentBasedModel<Globals> {
     super.step();
 
     // We update the interest rate every 5 iterations
-    //if (getContext().getTick() % 5 == 0 && getContext().getTick() > 20) {
-    //updateInterestRate();
-    //}
+    if (getGlobals().variableInterestRates && getContext().getTick() % 5 == 0
+        && getContext().getTick() > 20) {
+     // updateInterestRate();
+    }
+
     updateHistoricalPrices();
+    updateProjectedPrice();
+    System.out.println("Tick " + getContext().getTick() + " Price: " + getGlobals().marketPrice);
     run(Exchange.updateDemandPrediction());
 
     run(OptionTrader.updateOptions());
+
 
     run(Borrower.processBorrowing(),
 
@@ -120,11 +126,18 @@ public class TradingModel extends AgentBasedModel<Globals> {
         Borrower.actOnLoan()
     );
 
+
     run(
         Split.create(
             RetailInvestor.shareOpinion(),
             Initiator.shareOpinion()),
+        Split.create(
+            RetailInvestor.updateOpinion(),
+            MomentumTrader.updateOpinion()
+        )
+    );
 
+    run(
         Split.create(
             NoiseTrader.processInformation(),
             MomentumTrader.processInformation(),
@@ -174,5 +187,35 @@ public class TradingModel extends AgentBasedModel<Globals> {
         .map(a -> Math.pow((mean - a), 2)).sum();
     getGlobals().volatility = Math.sqrt(squaredDevs / timeFrame);
     return getGlobals().volatility;
+  }
+
+  private void updateProjectedPrice(){
+    getGlobals().projectedPrice = getGlobals().marketPrice +
+        calculateProjectedPriceChange(1);
+  }
+
+  public double calculateProjectedPriceChange(double t) {
+    // Net Demand Prediction in t steps time
+    double netDemand = predictNetDemand(t);
+    return (netDemand / getNumberOfTraders()) / getGlobals().lambda;
+  }
+
+  private double getLendingRate() {
+    return getGlobals().interestRate + getGlobals().interestMargin;
+  }
+
+  private long getNumberOfTraders() {
+    return getGlobals().nbFundamentalTraders + getGlobals().nbNoiseTraders
+        + getGlobals().nbMomentumTraders + getGlobals().nbHedgeFunds
+        + getGlobals().nbRetailInvestors;
+  }
+
+  // Predicts the net demand at the current time step using a polynomial fitted to the last 10 points
+  public double predictNetDemand(double tickOffset) {
+    if (getContext().getTick() <= getGlobals().derivativeTimeFrame) {
+      return 0;
+    }
+    return new PolynomialFunction(getGlobals().coeffs)
+        .value(getContext().getTick() + tickOffset);
   }
 }

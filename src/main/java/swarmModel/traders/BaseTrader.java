@@ -17,7 +17,7 @@ import swarmModel.utils.Option;
 public abstract class BaseTrader extends Agent<Globals> {
 
   @Variable
-  public double capital = 10000;
+  public double capital = 0;
 
   @Variable
   public double shares = 0;
@@ -26,9 +26,15 @@ public abstract class BaseTrader extends Agent<Globals> {
   public double portfolio = capital;
 
   protected final double initialMarketPrice = 15;
-  private static final double nbStepsPrediction = 5;
+  private static final double nbBackStepsPrediction = 5;
 
   public List<Option> soldOptions = new ArrayList<>();
+
+  @Override
+  public void init() {
+    capital = 10000;
+    super.init();
+  }
 
   private static Action<BaseTrader> action(SerializableConsumer<BaseTrader> consumer) {
     return Action.create(BaseTrader.class, consumer);
@@ -109,18 +115,18 @@ public abstract class BaseTrader extends Agent<Globals> {
   protected double predictTotalDemand() {
     if (getContext().getTick() == 0) {
       return 0;
-    } else if (getContext().getTick() < nbStepsPrediction) {
+    } else if (getContext().getTick() < nbBackStepsPrediction) {
       return getGlobals().pastTotalDemand.entrySet().stream().mapToDouble(Entry::getValue).sum()
           / getContext().getTick();
     }
     double demandPrediction = getGlobals().pastTotalDemand.entrySet().stream()
-        .filter(a -> a.getKey() >= getContext().getTick() - nbStepsPrediction)
+        .filter(a -> a.getKey() >= getContext().getTick() - nbBackStepsPrediction)
         .mapToDouble(Entry::getValue).sum();
-    return demandPrediction / nbStepsPrediction;
+    return demandPrediction / nbBackStepsPrediction;
   }
 
   // Predicts the net demand at the current time step using a polynomial fitted to the last 10 points
-  protected double predictNetDemand(double tickOffset) {
+  public double predictNetDemand(double tickOffset) {
     if (getContext().getTick() <= getGlobals().derivativeTimeFrame) {
       return 0;
     }

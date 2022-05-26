@@ -16,10 +16,9 @@ public class RetailInvestor extends Borrower {
   @Variable
   public double sensitivity;
 
-  private double previousPortfolio = capital;
-
   @Override
   public void init() {
+    capital = 500;
     opinion = getPrng().uniform(-2, 4).sample();
     sensitivity = getPrng().uniform(0, 1).sample();
   }
@@ -34,22 +33,27 @@ public class RetailInvestor extends Borrower {
         .send(OpinionShared.class, (msg, link) -> msg.opinion = trader.opinion));
   }
 
+  public static Action<RetailInvestor> updateOpinion(){
+    return action(trader -> {
+      double generalOpinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
+          .mapToDouble(opinion -> opinion.opinion).average().orElse(0);
+      if (generalOpinion != 0 && trader.getContext().getTick() % 3 == 0) {
+          /* Updated trader opinion is an average between their own opinion and those around them
+             every 3 time steps */
+        trader.opinion = (generalOpinion + trader.opinion) / 2;
+      }
+    });
+  }
+
   public static Action<RetailInvestor> processInformation() {
     return action(trader -> {
       // We update the sensitivity of the traders opinion trading every 5 steps
-      if (trader.getContext().getTick() % 5 == 0){
+      if (trader.getContext().getTick() % 5 == 0 && trader.getContext().getTick() > 1){
         trader.updateSensitivity();
       }
       if (trader.getContext().getTick() > trader.getGlobals().timeToStartOpinionSharing) {
         if (trader.isTrading()) {
-          trader.tradeOnOpinion(trader.opinion, 1);
-        }
-        double generalOpinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
-            .mapToDouble(opinion -> opinion.opinion).average().orElse(0);
-        if (generalOpinion != 0 && trader.getContext().getTick() % 3 == 0) {
-          /* Updated trader opinion is an average between their own opinion and those around them
-             every 3 time steps */
-          trader.opinion = (generalOpinion + trader.opinion) / 2;
+          trader.tradeOnOpinion(trader.opinion, trader.sensitivity);
         }
       }
       trader.deltaHedge();
@@ -59,10 +63,16 @@ public class RetailInvestor extends Borrower {
 
   // Updates sensitivity based on how well the trader has been doing recently
   public void updateSensitivity(){
-    sensitivity *= (portfolio / previousPortfolio);
+    if (portfolio > previousPortfolio){
+      sensitivity += 0.025;
+    } else {
+      sensitivity -= 0.025;
+    }
     // Cannot have sensitivity greater than 1
     if (sensitivity > 1){
       sensitivity = 1;
+    } else if (sensitivity < 0){
+      sensitivity = 0;
     }
     previousPortfolio = portfolio;
   }

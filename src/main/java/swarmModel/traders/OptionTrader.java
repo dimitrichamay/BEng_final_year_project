@@ -24,7 +24,8 @@ public class OptionTrader extends BaseTrader {
 
   private double optionOpinionThreshold = 0.6;
   public int optionExpiryTime;
-  public double sharesToSend = 0;
+  public double sharesToSell = 0;
+  public double sharesToBuy = 0;
 
   public List<Option> boughtOptions = new ArrayList<>();
 
@@ -51,7 +52,7 @@ public class OptionTrader extends BaseTrader {
     putValuesUpdate(option);
   }
 
-  public void putValuesUpdate(Option option){
+  public void putValuesUpdate(Option option) {
     getDoubleAccumulator("putOptionsBought").add(1);
     putOptions += 1;
     getLinks(Links.TradeLink.class)
@@ -66,7 +67,7 @@ public class OptionTrader extends BaseTrader {
     callValuesUpdate(option);
   }
 
-  public void callValuesUpdate(Option option){
+  public void callValuesUpdate(Option option) {
     getDoubleAccumulator("callOptionsBought").add(1);
     callOptions += 1;
     getLinks(Links.TradeLink.class)
@@ -85,7 +86,11 @@ public class OptionTrader extends BaseTrader {
           boolean expired = option.timeStep();
           if (expired) {
             double toSend = trader.actOnOption(option);
-            total += toSend;
+            if (toSend >= 0) {
+              trader.sharesToBuy += toSend;
+            } else {
+              trader.sharesToSell += Math.abs(toSend);
+            }
             expiredOptions.add(option);
             if (option.isCallOption()) {
               trader.callOptions--;
@@ -96,7 +101,6 @@ public class OptionTrader extends BaseTrader {
         }
         trader.boughtOptions.removeAll(expiredOptions);
       }
-      trader.sharesToSend = total;
     });
   }
 
@@ -114,15 +118,16 @@ public class OptionTrader extends BaseTrader {
   }
 
   public void sendShares() {
-    if (sharesToSend == 0) {
-      return;
+    if (sharesToSell > 0){
+      shares -= sharesToSell;
+      sellValuesUpdate(sharesToSell);
     }
-    if (sharesToSend > 0) {
-      buyValuesUpdate(Math.abs(sharesToSend));
-    } else {
-      sellValuesUpdate(Math.abs(sharesToSend));
+    if (sharesToBuy > 0){
+      shares += sharesToBuy;
+      buyValuesUpdate(sharesToBuy);
     }
-    sharesToSend = 0;
+    sharesToBuy = 0;
+    sharesToSell = 0;
   }
 
   public double calculateOptionPortfolioValue() {
@@ -180,6 +185,9 @@ public class OptionTrader extends BaseTrader {
           - exercisePrice * Math.exp(-r * timeToExpiry)
           * getNormalDistribution(d2)) * getGlobals().optionShareNumber;
       if (optionPrice > 0) {
+        // System.out.println("call option price " + optionPrice);
+        // System.out.println("stock" + stockPrice);
+        // System.out.println("normalDist " + getNormalDistribution(d1));
         return optionPrice;
       }
       return 0;
@@ -209,13 +217,10 @@ public class OptionTrader extends BaseTrader {
     // This is the value of delta for 10 shares since this is what an option represents
     delta = (currentOptionPrice - initialOptionPrice) / (getGlobals().marketPrice / option
         .getInitialStockPrice() * getGlobals().optionShareNumber);
-    // todo:check that absolute value of call and put delta sum approx to 1
     return delta;
   }
 
   public void deltaHedge() {
-    //todo: add a proportion of portfolio to hedge (ie don't hedge all of it)
-    // Do this using an input variable and only trade eg 1/2 of the total portfolio
     // Calculates the total delta of the portfolio
     double totalDelta = Math.round(boughtOptions.stream().mapToDouble(this::calcualteDelta).sum());
     double changeInHedge = 0;
@@ -273,15 +278,20 @@ public class OptionTrader extends BaseTrader {
     double scaledOpinion = Math.abs(generalOpinion / 20);
     double sensitiveOpinion =
         (Math.exp(scaledOpinion * sensitivity) - 1) / (Math.exp(sensitivity) - 1);
+    if (sensitiveOpinion <= 0) {
+      sensitiveOpinion = 0;
+    } else if (sensitiveOpinion > 1) {
+      sensitiveOpinion = 1;
+    }
     double sharesTraded = Math.floor(sensitiveOpinion * getGlobals().maxSharesTradedOnOpinion);
 
     if (generalOpinion > 0) {
-      buy(sharesTraded);
+      buy(Math.abs(sharesTraded));
       if (sensitiveOpinion > optionOpinionThreshold) {
         buyCallOption(optionExpiryTime, getGlobals().marketPrice * getGlobals().callStrikeFactor);
       }
     } else {
-      sell(sharesTraded);
+      sell(Math.abs(sharesTraded));
       if (sensitiveOpinion > optionOpinionThreshold) {
         buyPutOption(optionExpiryTime, getGlobals().marketPrice * getGlobals().putStrikeFactor);
       }

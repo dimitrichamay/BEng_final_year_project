@@ -1,6 +1,5 @@
 package swarmModel;
 
-import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.fitting.PolynomialCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoints;
 import simudyne.core.abm.Action;
@@ -10,8 +9,6 @@ import swarmModel.links.Links;
 import swarmModel.links.Messages;
 import swarmModel.links.Messages.BuyOrderPlaced;
 import swarmModel.links.Messages.SellOrderPlaced;
-import swarmModel.traders.MarketMaker;
-import swarmModel.utils.Option;
 
 public class Exchange extends Agent<Globals> {
 
