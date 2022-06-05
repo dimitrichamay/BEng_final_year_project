@@ -113,18 +113,14 @@ public class TradingModel extends AgentBasedModel<Globals> {
 
     updateHistoricalPrices();
     updateProjectedPrice();
-
     run(Exchange.updateDemandPrediction());
 
     run(OptionTrader.updateOptions());
 
     run(Borrower.processBorrowing(),
-
         Bank.lendMoney(),
-
         Borrower.actOnLoan()
     );
-
 
     run(
         Split.create(
