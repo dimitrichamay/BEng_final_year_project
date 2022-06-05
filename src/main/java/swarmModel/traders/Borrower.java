@@ -187,7 +187,6 @@ public abstract class Borrower extends OptionTrader {
       }
       super.callValuesUpdate(option);
     }
-
   }
 
   @Override

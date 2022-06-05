@@ -36,12 +36,12 @@ public class MomentumTrader extends Borrower {
   public static Action<MomentumTrader> processInformation() {
     return action(
         trader -> {
-          if (trader.getContext().getTick() > trader.getGlobals().longTermAverage) {
+          if (trader.getContext().getTick() > trader.getGlobals().longTermAveragePeriod) {
             trader.longTermMovingAvg = trader
-                .getTermMovingAvg(trader.getGlobals().longTermAverage,
+                .getTermMovingAvg(trader.getGlobals().longTermAveragePeriod,
                     trader.getGlobals().historicalPrices);
             trader.shortTermMovingAvg = trader
-                .getTermMovingAvg(trader.getGlobals().shortTermAverage,
+                .getTermMovingAvg(trader.getGlobals().shortTermAveragePeriod,
                     trader.getGlobals().historicalPrices);
             double probToBuy = trader.getPrng().uniform(0, 1).sample();
 

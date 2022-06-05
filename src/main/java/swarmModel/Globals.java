@@ -36,10 +36,10 @@ public final class Globals extends GlobalState {
   public double volatility = 0;
 
   @Input(name = "Momentum: Short Term Average")
-  public long shortTermAverage = 7;
+  public long shortTermAveragePeriod = 7;
 
   @Input(name = "Momentum: Long Term Average")
-  public long longTermAverage = 21;
+  public long longTermAveragePeriod = 21;
 
   @Input(name = "RSI Look Back Period")
   public long rsiPeriod = 14;

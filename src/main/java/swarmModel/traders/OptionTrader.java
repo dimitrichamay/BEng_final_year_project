@@ -79,7 +79,6 @@ public class OptionTrader extends BaseTrader {
   // Update each Option on every time step
   public static Action<OptionTrader> updateOptions() {
     return action(trader -> {
-      double total = 0;
       if (trader.getContext().getTick() > 0) {
         List<Option> expiredOptions = new ArrayList<>();
         for (Option option : trader.boughtOptions) {
@@ -215,8 +214,8 @@ public class OptionTrader extends BaseTrader {
     double initialOptionPrice = option.getOptionPrice();
 
     // This is the value of delta for 10 shares since this is what an option represents
-    delta = (currentOptionPrice - initialOptionPrice) / (getGlobals().marketPrice / option
-        .getInitialStockPrice() * getGlobals().optionShareNumber);
+    delta = ((currentOptionPrice - initialOptionPrice) / (getGlobals().marketPrice - option
+        .getInitialStockPrice())) * getGlobals().optionShareNumber;
     return delta;
   }
 

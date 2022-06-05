@@ -19,7 +19,7 @@ public class RetailInvestor extends Borrower {
   @Override
   public void init() {
     capital = 500;
-    opinion = getPrng().uniform(-2, 4).sample();
+    opinion = getPrng().uniform(-5, 5).sample();
     sensitivity = getPrng().uniform(0, 1).sample();
   }
 
