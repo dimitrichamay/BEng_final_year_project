@@ -118,10 +118,18 @@ public abstract class Borrower extends OptionTrader {
         if (capital >= 0) {
           double increaseFromInterest = 1 + getGlobals().interestRate;
 
-          // Price is expected to rise more than interestRates so use capital to pay back
           if (increaseFromInterest < priceChangePrediction) {
-            paidBack += Math.min(amountBorrowed, capital);
-            capital -= Math.min(amountBorrowed, capital);
+            // Price is expected to rise more than interestRates so use capital to pay back
+            if (shares > 0){
+              paidBack += Math.min(amountBorrowed, capital);
+              capital -= Math.min(amountBorrowed, capital);
+            }
+            // We have a short position so we choose to cover this first with our capital
+            else {
+              double s = Math.floor(capital / getGlobals().marketPrice);
+              sharesToBuy += s;
+              capital -= s;
+            }
           }
           // Interest rates are predicted to be more profitable so sell shares and keep capital
           else {
@@ -133,12 +141,6 @@ public abstract class Borrower extends OptionTrader {
                 sharesToSell += shares;
                 paidBack += Math.floor(shares * getGlobals().marketPrice);
               }
-            }
-            // We have a short position so we choose to cover this first with our capital
-            else {
-              double s = Math.floor(capital / getGlobals().marketPrice);
-              sharesToBuy += s;
-              capital -= s;
             }
           }
         } else {

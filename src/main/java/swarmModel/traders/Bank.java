@@ -1,6 +1,5 @@
 package swarmModel.traders;
 
-import java.util.concurrent.atomic.AtomicReference;
 import simudyne.core.abm.Action;
 import simudyne.core.abm.Agent;
 import simudyne.core.annotations.Variable;
