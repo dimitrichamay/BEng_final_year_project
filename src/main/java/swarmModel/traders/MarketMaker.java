@@ -21,7 +21,7 @@ public class MarketMaker extends BaseTrader {
   private final double priceToStartCoverPos = initialMarketPrice * 1.5;
   private final double priceToCoverHalfPos = initialMarketPrice * 3;
   private final double priceToCoverPos = initialMarketPrice * 5;
-  private final double compensationFactor = 0.01;
+  private final double compensationFactor = 0.05;
 
   private int sharesToBuy = 0;
   private int sharesToSell = 0;

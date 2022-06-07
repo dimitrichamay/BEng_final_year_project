@@ -22,7 +22,7 @@ import swarmModel.traders.NoiseTrader;
 import swarmModel.traders.OptionTrader;
 import swarmModel.traders.RetailInvestor;
 
-@ModelSettings(timeUnit = "DAYS", start = "2021-01-01T00:00:00Z", id = "GME_squeeze", macroStep = 150)
+@ModelSettings(timeUnit = "DAYS", start = "2021-01-01T00:00:00Z", id = "GME_squeeze")
 public class TradingModel extends AgentBasedModel<Globals> {
 
   {
@@ -86,7 +86,7 @@ public class TradingModel extends AgentBasedModel<Globals> {
 
     retailInvestorGroup.gridConnected(Links.OpinionLink.class).width(2);
     initiatorGroup.partitionConnected(retailInvestorGroup, Links.OpinionLink.class).shard();
-    initiatorGroup.fullyConnected(momentumTraderGroup, Links.OpinionLink.class);
+    retailInvestorGroup.partitionConnected(momentumTraderGroup, Links.OpinionLink.class);
 
     // Setup of Borrowing Links
 
@@ -108,24 +108,19 @@ public class TradingModel extends AgentBasedModel<Globals> {
     // We update the interest rate every 5 iterations
     if (getGlobals().variableInterestRates && getContext().getTick() % 5 == 0
         && getContext().getTick() > 20) {
-     // updateInterestRate();
+      updateInterestRate();
     }
 
     updateHistoricalPrices();
     updateProjectedPrice();
-    System.out.println("Tick " + getContext().getTick() + " Price: " + getGlobals().marketPrice);
     run(Exchange.updateDemandPrediction());
 
     run(OptionTrader.updateOptions());
 
-
     run(Borrower.processBorrowing(),
-
         Bank.lendMoney(),
-
         Borrower.actOnLoan()
     );
-
 
     run(
         Split.create(

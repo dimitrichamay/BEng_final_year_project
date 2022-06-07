@@ -1,8 +1,5 @@
 package swarmModel.utils;
 
-import swarmModel.Exchange;
-import swarmModel.Globals;
-
 public class Option {
 
   public enum type {CALL, PUT}
