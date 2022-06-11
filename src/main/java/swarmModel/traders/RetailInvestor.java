@@ -16,9 +16,12 @@ public class RetailInvestor extends Borrower {
   @Variable
   public double sensitivity;
 
+  private boolean hedgingAgent;
+
   @Override
   public void init() {
-    capital = 500;
+    hedgingAgent = getPrng().getNextBoolean();
+    capital = 1000;
     opinion = getPrng().uniform(-5, 5).sample();
     sensitivity = getPrng().uniform(0, 1).sample();
   }
@@ -33,7 +36,7 @@ public class RetailInvestor extends Borrower {
         .send(OpinionShared.class, (msg, link) -> msg.opinion = trader.opinion));
   }
 
-  public static Action<RetailInvestor> updateOpinion(){
+  public static Action<RetailInvestor> updateOpinion() {
     return action(trader -> {
       double generalOpinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
           .mapToDouble(opinion -> opinion.opinion).average().orElse(0);
@@ -48,7 +51,7 @@ public class RetailInvestor extends Borrower {
   public static Action<RetailInvestor> processInformation() {
     return action(trader -> {
       // We update the sensitivity of the traders opinion trading every 5 steps
-      if (trader.getContext().getTick() % 5 == 0 && trader.getContext().getTick() > 1){
+      if (trader.getContext().getTick() % 5 == 0 && trader.getContext().getTick() > 1) {
         trader.updateSensitivity();
       }
       if (trader.getContext().getTick() > trader.getGlobals().timeToStartOpinionSharing) {
@@ -56,28 +59,30 @@ public class RetailInvestor extends Borrower {
           trader.tradeOnOpinion(trader.opinion, trader.sensitivity);
         }
       }
-      trader.deltaHedge();
+      if (trader.hedgingAgent) {
+        trader.deltaHedge();
+      }
       trader.sendShares();
     });
   }
 
   // Updates sensitivity based on how well the trader has been doing recently
-  public void updateSensitivity(){
-    if (portfolio > previousPortfolio){
+  public void updateSensitivity() {
+    if (portfolio > previousPortfolio) {
       sensitivity += 0.025;
     } else {
       sensitivity -= 0.025;
     }
     // Cannot have sensitivity greater than 1
-    if (sensitivity > 1){
+    if (sensitivity > 1) {
       sensitivity = 1;
-    } else if (sensitivity < 0){
+    } else if (sensitivity < 0) {
       sensitivity = 0;
     }
     previousPortfolio = portfolio;
   }
 
   private boolean isTrading() {
-    return getPrng().uniform(0, 1).sample() > 0.4;
+    return getPrng().uniform(0, 1).sample() > 0.25;
   }
 }

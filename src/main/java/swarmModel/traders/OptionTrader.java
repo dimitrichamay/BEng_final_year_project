@@ -117,11 +117,11 @@ public class OptionTrader extends BaseTrader {
   }
 
   public void sendShares() {
-    if (sharesToSell > 0){
+    if (sharesToSell > 0) {
       shares -= sharesToSell;
       sellValuesUpdate(sharesToSell);
     }
-    if (sharesToBuy > 0){
+    if (sharesToBuy > 0) {
       shares += sharesToBuy;
       buyValuesUpdate(sharesToBuy);
     }
@@ -216,6 +216,24 @@ public class OptionTrader extends BaseTrader {
     // This is the value of delta for 10 shares since this is what an option represents
     delta = ((currentOptionPrice - initialOptionPrice) / (getGlobals().marketPrice - option
         .getInitialStockPrice())) * getGlobals().optionShareNumber;
+
+    // The value of delta for each individual option contract is between -1 and 1
+    if (option.isCallOption()){
+      if (delta > getGlobals().optionShareNumber){
+        delta = getGlobals().optionShareNumber;
+      }
+      if (delta < 0){
+        delta = 0;
+      }
+    } else {
+      if (delta < - getGlobals().optionShareNumber){
+        delta = - getGlobals().optionShareNumber;
+      }
+      if (delta > 0){
+        delta = 0;
+      }
+    }
+
     return delta;
   }
 
@@ -290,6 +308,7 @@ public class OptionTrader extends BaseTrader {
         buyCallOption(optionExpiryTime, getGlobals().marketPrice * getGlobals().callStrikeFactor);
       }
     } else {
+      System.out.println("tick: " + getContext().getTick() + " opinion: " + sensitiveOpinion);
       sell(Math.abs(sharesTraded));
       if (sensitiveOpinion > optionOpinionThreshold) {
         buyPutOption(optionExpiryTime, getGlobals().marketPrice * getGlobals().putStrikeFactor);

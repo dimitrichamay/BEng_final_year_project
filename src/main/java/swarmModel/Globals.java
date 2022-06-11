@@ -8,26 +8,23 @@ import simudyne.core.annotations.Input;
 
 public final class Globals extends GlobalState {
 
-  @Input(name = "Update Frequency")
-  public double updateFrequency = 0.01;
-
   @Constant(name = "Number of Noise Traders")
-  public long nbNoiseTraders = 1000;
+  public long nbNoiseTraders = 300;
 
   @Constant(name = "Number of Momentum Traders")
-  public long nbMomentumTraders = 1000;
+  public long nbMomentumTraders = 300;
 
   @Constant(name = "Number of Fundamental Traders")
-  public long nbFundamentalTraders = 1000;
+  public long nbFundamentalTraders = 300;
 
   @Constant(name = "Number of Retail Investors")
-  public long nbRetailInvestors = 10000;
+  public long nbRetailInvestors = 1500;
 
   @Constant(name = "Number of intitiators")
   public long nbInitiators = 5;
 
   @Constant(name = "Number of Hedge Funds")
-  public long nbHedgeFunds = 50;
+  public long nbHedgeFunds = 5;
 
   @Input(name = "Lambda")
   public double lambda = 10;
@@ -65,7 +62,7 @@ public final class Globals extends GlobalState {
 
   // This can be changed if desired but is set to the interest rate level in Jan 2021
   @Input(name = "Interest Rate")
-  public double interestRate = 0.3;
+  public double interestRate = 0.028;
 
   @Input(name = "Net interest margin")
   public double interestMargin = 0.03;
@@ -87,16 +84,19 @@ public final class Globals extends GlobalState {
   public double stdVolume = 1;
 
   @Constant(name = "Max number of shares traded on an opinion")
-  public double maxSharesTradedOnOpinion = 10;
+  public double maxSharesTradedOnOpinion = 30;
 
   @Constant(name = "Max opinion")
   public double maxOpinion = 20;
 
   @Input(name = "Time to start opinion sharing")
-  public double timeToStartOpinionSharing = 5;
+  public double timeToStartOpinionSharing = 20;
 
   @Input(name = "Time to start crash")
-  public double timeToSell = 45;
+  public double timeToSell = 120;
+
+  @Input(name = "Max capital in the market to lend")
+  public double marketMaxCapital = 10000000;
 
   public Map<Long, Double> historicalPrices = new HashMap<>();
   public double projectedPrice = 15;

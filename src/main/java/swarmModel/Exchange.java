@@ -4,6 +4,7 @@ import org.apache.commons.math3.fitting.PolynomialCurveFitter;
 import org.apache.commons.math3.fitting.WeightedObservedPoints;
 import simudyne.core.abm.Action;
 import simudyne.core.abm.Agent;
+import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
 import swarmModel.links.Links;
 import swarmModel.links.Messages;
@@ -12,6 +13,7 @@ import swarmModel.links.Messages.SellOrderPlaced;
 
 public class Exchange extends Agent<Globals> {
 
+  @Variable
   public double price = 15;
 
   //Helper function for ease of interpretation

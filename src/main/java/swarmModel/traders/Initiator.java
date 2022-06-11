@@ -29,12 +29,14 @@ public class Initiator extends Agent<Globals> {
     return action(
         trader -> {
           if (trader.getContext().getTick() <= trader.getGlobals().timeToSell) {
+            trader.opinion = trader.getGlobals().maxOpinion;
             trader.getLinks(OpinionLink.class).send(OpinionShared.class, (msg, link) ->
                 msg.opinion = trader.opinion);
           }
           if (trader.getContext().getTick() > trader.getGlobals().timeToSell) {
+            trader.opinion = - trader.getGlobals().maxOpinion;
             trader.getLinks(OpinionLink.class).send(OpinionShared.class, (msg, link) ->
-                msg.opinion = - trader.getGlobals().maxOpinion);
+                msg.opinion = trader.opinion);
           }
         });
   }

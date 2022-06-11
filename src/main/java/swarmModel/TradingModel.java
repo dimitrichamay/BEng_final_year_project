@@ -22,7 +22,7 @@ import swarmModel.traders.NoiseTrader;
 import swarmModel.traders.OptionTrader;
 import swarmModel.traders.RetailInvestor;
 
-@ModelSettings(timeUnit = "DAYS", start = "2021-01-01T00:00:00Z", id = "GME_squeeze")
+@ModelSettings(timeUnit = "DAYS", start = "2021-01-01T00:00:00Z", id = "GME_squeeze", end = 150L)
 public class TradingModel extends AgentBasedModel<Globals> {
 
   {

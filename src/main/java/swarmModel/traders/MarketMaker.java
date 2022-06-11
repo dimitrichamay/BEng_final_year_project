@@ -17,11 +17,7 @@ public class MarketMaker extends BaseTrader {
 
   private static final double maxThreshold = 0.5;
 
-
-  private final double priceToStartCoverPos = initialMarketPrice * 1.5;
-  private final double priceToCoverHalfPos = initialMarketPrice * 3;
-  private final double priceToCoverPos = initialMarketPrice * 5;
-  private final double compensationFactor = 0.05;
+  private final double compensationFactor = 0.001;
 
   private int sharesToBuy = 0;
   private int sharesToSell = 0;
@@ -40,8 +36,8 @@ public class MarketMaker extends BaseTrader {
         // Adds liquidity on other side of the market if large disparity in demand
         if (Math.abs(predictNetDemand / predictTotalDemand) > maxThreshold) {
           long compensation = Math
-              .round(Math.abs(predictNetDemand) * marketMaker.compensationFactor);
-
+              .round(Math.min(Math.abs(predictNetDemand), marketMaker.getNumberOfTraders()) * marketMaker.compensationFactor);
+          System.out.println(compensation);
           if (predictNetDemand > 0) {
             marketMaker.sell(compensation);
           } else {
@@ -55,10 +51,10 @@ public class MarketMaker extends BaseTrader {
 
       marketMaker.sell(marketMaker.sharesToSell);
       marketMaker.buy(marketMaker.sharesToBuy);
+
       marketMaker.sharesToBuy = 0;
       marketMaker.sharesToSell = 0;
 
-      marketMaker.coverShortIfNecessary();
     });
   }
 
@@ -83,19 +79,10 @@ public class MarketMaker extends BaseTrader {
     });
   }
 
-  private void coverShortIfNecessary() {
-    if (shares < 0) {
-      if (getGlobals().marketPrice > priceToCoverPos && priceIncreasePredicted()) {
-        coverPosition(1);
-      } else if (getGlobals().marketPrice > priceToCoverHalfPos && priceIncreasePredicted()) {
-        coverPosition(0.5);
-      } else if (getGlobals().marketPrice > priceToStartCoverPos && priceIncreasePredicted()) {
-        coverPosition(0.25);
-      }
-    }
+  public long getNumberOfTraders() {
+    return getGlobals().nbFundamentalTraders + getGlobals().nbNoiseTraders
+        + getGlobals().nbMomentumTraders + getGlobals().nbHedgeFunds
+        + getGlobals().nbRetailInvestors;
   }
 
-  private void coverPosition(double proportionToCover) {
-    buy(Math.abs(shares) * proportionToCover);
-  }
 }

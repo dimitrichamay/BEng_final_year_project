@@ -50,9 +50,6 @@ public class NoiseTrader extends OptionTrader {
   }
 
   public void updateThreshold() {
-    double updateFrequency = getGlobals().updateFrequency;
-    if (random.nextDouble() <= updateFrequency) {
-      tradingThresh = getPrng().uniform(0, 1).sample();
-    }
+    tradingThresh = getPrng().uniform(0, 1).sample();
   }
 }

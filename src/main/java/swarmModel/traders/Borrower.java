@@ -105,7 +105,7 @@ public abstract class Borrower extends OptionTrader {
     double paidBack = 0;
 
     // Is in insurmountable debt, stop trading completely
-    if (portfolio * lossToStopTrading < amountBorrowed) {
+    if (portfolio * lossToStopTrading < amountBorrowed || (!canBorrow && capital < 0)) {
       isTrading = false;
     }
 
@@ -165,7 +165,7 @@ public abstract class Borrower extends OptionTrader {
 
   @Override
   public void putValuesUpdate(Option option) {
-    if (isTrading && 2 * (option.getExercisePrice() - getGlobals().projectedPrice) > (option.getOptionPrice()
+    if (isTrading && (option.getExercisePrice() - getGlobals().projectedPrice) > (option.getOptionPrice()
         * getGlobals().interestRate)) {
       if (capital < option.getOptionPrice()) {
         if (!canBorrow) {
@@ -179,7 +179,7 @@ public abstract class Borrower extends OptionTrader {
 
   @Override
   public void callValuesUpdate(Option option) {
-    if (isTrading && 2 * (getGlobals().projectedPrice - option.getExercisePrice()) > (option.getOptionPrice()
+    if (isTrading && (getGlobals().projectedPrice - option.getExercisePrice()) > (option.getOptionPrice()
         * getGlobals().interestRate)) {
       if (capital < 0) {
         if (!canBorrow) {

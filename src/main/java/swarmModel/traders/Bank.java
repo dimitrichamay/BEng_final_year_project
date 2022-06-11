@@ -20,6 +20,12 @@ public class Bank extends Agent<Globals> {
   @Variable
   public double profitFromInterest = 0;
 
+  @Override
+  public void init() {
+    super.init();
+    capitalToLend = getGlobals().marketMaxCapital;
+  }
+
   private static Action<Bank> action(SerializableConsumer<Bank> consumer) {
     return Action.create(Bank.class, consumer);
   }

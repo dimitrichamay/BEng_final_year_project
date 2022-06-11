@@ -18,7 +18,7 @@ public class MainHeadless {
 
       long seed = 1234;   //((LocalModelRunner) modelRunner).rootBuiltConfig().getLong("seed");
       int n_runs = 1;     //((LocalModelRunner) modelRunner).rootBuiltConfig().getInt("runs");
-      long n_ticks = 3;  //((LocalModelRunner) modelRunner).rootBuiltConfig().getLong("ticks");
+      long n_ticks = 150;  //((LocalModelRunner) modelRunner).rootBuiltConfig().getLong("ticks");
 
       BatchDefinitionsBuilder runDefinitionBuilder =
           BatchDefinitionsBuilder.create()
