@@ -62,7 +62,7 @@ public final class Globals extends GlobalState {
 
   // This can be changed if desired but is set to the interest rate level in Jan 2021
   @Input(name = "Interest Rate")
-  public double interestRate = 0.028;
+  public double interestRate = 0.3;
 
   @Input(name = "Net interest margin")
   public double interestMargin = 0.03;
@@ -71,8 +71,9 @@ public final class Globals extends GlobalState {
   @Input(name = "Derivative time frame")
   public double derivativeTimeFrame = 10;
 
+  //todo: change this if demoing the original code
   @Input(name = "Variable Interest Rates")
-  public boolean variableInterestRates = true;
+  public boolean variableInterestRates = false;
 
   @Constant(name = "Call option strike price factor")
   public double callStrikeFactor = 0.95;
@@ -96,13 +97,15 @@ public final class Globals extends GlobalState {
   public double timeToSell = 150;
 
   @Input(name = "Max capital in the market to lend")
-  public double marketMaxCapital = 10000000;
+  public double marketMaxCapital = 100000000;
 
   public Map<Long, Double> historicalPrices = new HashMap<>();
   public double projectedPrice = 15;
   public Map<Long, Double> pastNetDemand = new HashMap<>();
   public Map<Long, Double> pastTotalDemand = new HashMap<>();
-  public double[] coeffs = new double[10];
-
+  public int orderOfPoly = 2;
+  public double[] coeffs = new double[orderOfPoly];
+  public double[] priceCoeffs = new double[orderOfPoly];
+  public double profitFactor = 8;
 }
 

@@ -14,7 +14,6 @@ public class Option {
   private final type optionType;
 
 
-
   public Option(int timeToExpiry, double exercisePrice, type optionType, double initialStockPrice) {
     this.timeToExpiry = timeToExpiry;
     this.exercisePrice = exercisePrice;

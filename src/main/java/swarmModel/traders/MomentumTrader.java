@@ -11,7 +11,7 @@ import swarmModel.links.Messages;
    This agent is an example implementation of a moving average trading strategy
 */
 
-public class MomentumTrader extends OptionTrader {
+public class MomentumTrader extends Borrower {
 
   @Variable(name = "Long Term Moving Average")
   public double longTermMovingAvg;

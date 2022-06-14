@@ -1,6 +1,5 @@
 package swarmModel.traders;
 
-import org.apache.hadoop.security.SaslOutputStream;
 import simudyne.core.abm.Action;
 import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
@@ -8,7 +7,7 @@ import swarmModel.links.Links.OpinionLink;
 import swarmModel.links.Messages;
 import swarmModel.links.Messages.OpinionShared;
 
-public class RetailInvestor extends OptionTrader {
+public class RetailInvestor extends Borrower {
 
   @Variable
   public double opinion;

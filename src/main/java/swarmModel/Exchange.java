@@ -70,6 +70,7 @@ public class Exchange extends Agent<Globals> {
 
   public static Action<Exchange> updateDemandPrediction() {
     final WeightedObservedPoints obs = new WeightedObservedPoints();
+    final WeightedObservedPoints priceObs = new WeightedObservedPoints();
     return action(exchange -> {
       exchange.getGlobals().pastNetDemand
           .put(exchange.getContext().getTick(), (double) exchange.lastNetDemand);
@@ -83,8 +84,16 @@ public class Exchange extends Agent<Globals> {
               .getGlobals().derivativeTimeFrame)
           .forEach(a -> obs.add(a.getKey(), a.getValue()));
       final PolynomialCurveFitter fitter = PolynomialCurveFitter
-          .create((int) exchange.getGlobals().derivativeTimeFrame);
+          .create(exchange.getGlobals().orderOfPoly);
       exchange.getGlobals().coeffs = fitter.fit(obs.toList());
+
+      exchange.getGlobals().historicalPrices.entrySet().stream()
+          .filter(a -> a.getKey() >= exchange.getContext().getTick() - exchange
+              .getGlobals().derivativeTimeFrame)
+          .forEach(a -> priceObs.add(a.getKey(), a.getValue()));
+      final PolynomialCurveFitter priceFitter = PolynomialCurveFitter
+          .create(exchange.getGlobals().orderOfPoly);
+      exchange.getGlobals().priceCoeffs = priceFitter.fit(priceObs.toList());
     });
   }
 

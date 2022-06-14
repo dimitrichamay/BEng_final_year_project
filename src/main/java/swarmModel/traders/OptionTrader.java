@@ -314,7 +314,6 @@ public class OptionTrader extends BaseTrader {
     if (generalOpinion > 0) {
       buy(Math.abs(sharesTraded));
       if (sensitiveOpinion > optionOpinionThreshold) {
-        System.out.println(optionExpiryTime);
         buyCallOption(optionExpiryTime, getGlobals().marketPrice * getGlobals().callStrikeFactor);
       }
     } else {
@@ -325,4 +324,24 @@ public class OptionTrader extends BaseTrader {
     }
   }
 
+
+  //todo: check if this is needed
+  private double getOptionPremium(Option option) {
+    if (option.isCallOption()) {
+      // The option is out of the money so its price does not include intrinsic value
+      if (option.getExercisePrice() > getGlobals().marketPrice) {
+        return option.getOptionPrice();
+      }
+      return option.getOptionPrice() - getGlobals().optionShareNumber * (getGlobals().marketPrice
+          - option
+          .getExercisePrice());
+    } else {
+      //  The option is out of the money so its price does not include intrinsic value
+      if (option.getExercisePrice() < getGlobals().marketPrice) {
+        return option.getOptionPrice();
+      }
+      return option.getOptionPrice() - getGlobals().optionShareNumber * (option.getExercisePrice()
+          - getGlobals().marketPrice);
+    }
+  }
 }

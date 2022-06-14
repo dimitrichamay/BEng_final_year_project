@@ -1,5 +1,6 @@
 package swarmModel;
 
+import java.util.Arrays;
 import java.util.Map.Entry;
 import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import simudyne.core.abm.AgentBasedModel;
@@ -115,12 +116,12 @@ public class TradingModel extends AgentBasedModel<Globals> {
     updateProjectedPrice();
     run(Exchange.updateDemandPrediction());
 
-   run(OptionTrader.updateOptions());
+    run(OptionTrader.updateOptions());
 
-  //  run(Borrower.processBorrowing(),
-  //      Bank.lendMoney(),
-  //      Borrower.actOnLoan()
-   // );
+    run(Borrower.processBorrowing(),
+        Bank.lendMoney(),
+        Borrower.actOnLoan()
+    );
 
     run(
         Split.create(
@@ -186,29 +187,16 @@ public class TradingModel extends AgentBasedModel<Globals> {
     return getGlobals().volatility;
   }
 
-  private void updateProjectedPrice(){
-    getGlobals().projectedPrice = getGlobals().marketPrice +
-        calculateProjectedPriceChange(1);
+  private void updateProjectedPrice() {
+    getGlobals().projectedPrice = predictPrice(1);
   }
 
-  public double calculateProjectedPriceChange(double t) {
-    // Net Demand Prediction in t steps time
-    double netDemand = predictNetDemand(t);
-    return (netDemand / getNumberOfTraders()) / getGlobals().lambda;
-  }
-
-  private long getNumberOfTraders() {
-    return getGlobals().nbFundamentalTraders + getGlobals().nbNoiseTraders
-        + getGlobals().nbMomentumTraders + getGlobals().nbHedgeFunds
-        + getGlobals().nbRetailInvestors;
-  }
-
-  // Predicts the net demand at the current time step using a polynomial fitted to the last 10 points
-  public double predictNetDemand(double tickOffset) {
+  // Predicts the price at the current time step using a polynomial fitted to the last 10 points
+  public double predictPrice(double tickOffset) {
     if (getContext().getTick() <= getGlobals().derivativeTimeFrame) {
       return 0;
     }
-    return new PolynomialFunction(getGlobals().coeffs)
+    return new PolynomialFunction(getGlobals().priceCoeffs)
         .value(getContext().getTick() + tickOffset);
   }
 }

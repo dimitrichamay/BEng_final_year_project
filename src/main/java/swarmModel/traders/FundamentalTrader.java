@@ -4,7 +4,7 @@ import simudyne.core.abm.Action;
 import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
 
-public class FundamentalTrader extends BaseTrader {
+public class FundamentalTrader extends Borrower {
 
   //Helper function for ease of interpretation
   private static Action<FundamentalTrader> action(
