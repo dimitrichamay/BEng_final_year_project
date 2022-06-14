@@ -32,8 +32,8 @@ public abstract class BaseTrader extends Agent<Globals> {
 
   @Override
   public void init() {
-    capital = 10000;
     super.init();
+    capital = 10000;
   }
 
   private static Action<BaseTrader> action(SerializableConsumer<BaseTrader> consumer) {

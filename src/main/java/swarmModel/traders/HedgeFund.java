@@ -9,7 +9,6 @@ public class HedgeFund extends BaseTrader {
 
   private final double shortingPhase = 5;
   private final double shortVolume = 500;
-  private final double secondShortVolume = 250;
   private final double secondShortSellIncrease = 1.5;
   private final double coverPosition = 2.5;
   private final double takeProfit = 0.5;
@@ -30,7 +29,7 @@ public class HedgeFund extends BaseTrader {
         }
         // Second short selling phase to try and make the market fall
         if (increaseProportion > trader.secondShortSellIncrease && !trader.secondShort) {
-          trader.sell(trader.secondShortVolume * increaseProportion);
+          trader.sell(trader.shortVolume * increaseProportion);
           if (trader.getContext().getTick() % trader.shortingPhase == 0) {
             trader.secondShort = true;
           }

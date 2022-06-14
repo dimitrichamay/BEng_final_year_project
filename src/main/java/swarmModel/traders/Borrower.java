@@ -19,13 +19,13 @@ public abstract class Borrower extends OptionTrader {
   RandomGenerator random;
   public double amountToBorrow = 0;
   private int interestRepaymentStep = 5;
-  public double previousPortfolio = 500;
   public boolean isTrading = true;
   private final double lossToStopTrading = 1.5;
   public boolean canBorrow = true;
 
   @Override
   public void init() {
+    super.init();
     capital = 500;
     random = this.getPrng().generator;
     interestRepaymentStep = getPrng().generator.nextInt(8) + 5;

@@ -1,5 +1,6 @@
 package swarmModel.traders;
 
+import org.apache.hadoop.security.SaslOutputStream;
 import simudyne.core.abm.Action;
 import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
@@ -7,7 +8,7 @@ import swarmModel.links.Links.OpinionLink;
 import swarmModel.links.Messages;
 import swarmModel.links.Messages.OpinionShared;
 
-public class RetailInvestor extends Borrower {
+public class RetailInvestor extends OptionTrader {
 
   @Variable
   public double opinion;
@@ -16,13 +17,15 @@ public class RetailInvestor extends Borrower {
   @Variable
   public double sensitivity;
 
-  private boolean hedgingAgent;
+  private boolean doubt = false;
+  public double previousPortfolio = 500;
+
 
   @Override
   public void init() {
-    hedgingAgent = getPrng().getNextBoolean();
+    super.init();
     capital = 1000;
-    opinion = getPrng().uniform(-5, 5).sample();
+    opinion = getPrng().uniform(-10, 10).sample();
     sensitivity = getPrng().uniform(0, 1).sample();
   }
 
@@ -41,9 +44,16 @@ public class RetailInvestor extends Borrower {
       double generalOpinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
           .mapToDouble(opinion -> opinion.opinion).average().orElse(0);
       if (generalOpinion != 0 && trader.getContext().getTick() % 3 == 0) {
+
+        if (trader.doubt) {
+          // If the trader has doubts, they reverse their opinion
+          trader.opinion = - trader.opinion;
+        } else {
           /* Updated trader opinion is an average between their own opinion and those around them
-             every 3 time steps */
-        trader.opinion = (generalOpinion + trader.opinion) / 2;
+             every 3 time steps if they do not doubt*/
+          trader.opinion = (generalOpinion + trader.opinion) / 2;
+        }
+        trader.doubt = trader.getPrng().uniform(0, 1).sample() > 0.9;
       }
     });
   }
@@ -51,7 +61,7 @@ public class RetailInvestor extends Borrower {
   public static Action<RetailInvestor> processInformation() {
     return action(trader -> {
       // We update the sensitivity of the traders opinion trading every 5 steps
-      if (trader.getContext().getTick() % 5 == 0 && trader.getContext().getTick() > 1) {
+      if (trader.getContext().getTick() % 15 == 0 && trader.getContext().getTick() > 1) {
         trader.updateSensitivity();
       }
       if (trader.getContext().getTick() > trader.getGlobals().timeToStartOpinionSharing) {
@@ -59,9 +69,7 @@ public class RetailInvestor extends Borrower {
           trader.tradeOnOpinion(trader.opinion, trader.sensitivity);
         }
       }
-      if (trader.hedgingAgent) {
-        trader.deltaHedge();
-      }
+      trader.deltaHedge();
       trader.sendShares();
     });
   }

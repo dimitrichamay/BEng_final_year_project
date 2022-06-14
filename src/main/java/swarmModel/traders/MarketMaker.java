@@ -37,7 +37,6 @@ public class MarketMaker extends BaseTrader {
         if (Math.abs(predictNetDemand / predictTotalDemand) > maxThreshold) {
           long compensation = Math
               .round(Math.min(Math.abs(predictNetDemand), marketMaker.getNumberOfTraders()) * marketMaker.compensationFactor);
-          System.out.println(compensation);
           if (predictNetDemand > 0) {
             marketMaker.sell(compensation);
           } else {

@@ -9,22 +9,22 @@ import simudyne.core.annotations.Input;
 public final class Globals extends GlobalState {
 
   @Constant(name = "Number of Noise Traders")
-  public long nbNoiseTraders = 300;
+  public long nbNoiseTraders = 1000;
 
   @Constant(name = "Number of Momentum Traders")
-  public long nbMomentumTraders = 300;
+  public long nbMomentumTraders = 500;
 
   @Constant(name = "Number of Fundamental Traders")
-  public long nbFundamentalTraders = 300;
+  public long nbFundamentalTraders = 500;
 
   @Constant(name = "Number of Retail Investors")
-  public long nbRetailInvestors = 1500;
+  public long nbRetailInvestors = 1000;
 
   @Constant(name = "Number of intitiators")
-  public long nbInitiators = 5;
+  public long nbInitiators = 10;
 
   @Constant(name = "Number of Hedge Funds")
-  public long nbHedgeFunds = 5;
+  public long nbHedgeFunds = 50;
 
   @Input(name = "Lambda")
   public double lambda = 10;
@@ -58,7 +58,7 @@ public final class Globals extends GlobalState {
 
   // The number of shares which an option gives the right to buy/sell
   @Input(name = "Option share number")
-  public double optionShareNumber = 10;
+  public double optionShareNumber = 100;
 
   // This can be changed if desired but is set to the interest rate level in Jan 2021
   @Input(name = "Interest Rate")
@@ -72,7 +72,7 @@ public final class Globals extends GlobalState {
   public double derivativeTimeFrame = 10;
 
   @Input(name = "Variable Interest Rates")
-  public boolean variableInterestRates = false;
+  public boolean variableInterestRates = true;
 
   @Constant(name = "Call option strike price factor")
   public double callStrikeFactor = 0.95;
@@ -84,7 +84,7 @@ public final class Globals extends GlobalState {
   public double stdVolume = 1;
 
   @Constant(name = "Max number of shares traded on an opinion")
-  public double maxSharesTradedOnOpinion = 30;
+  public double maxSharesTradedOnOpinion = 100;
 
   @Constant(name = "Max opinion")
   public double maxOpinion = 20;
@@ -93,7 +93,7 @@ public final class Globals extends GlobalState {
   public double timeToStartOpinionSharing = 20;
 
   @Input(name = "Time to start crash")
-  public double timeToSell = 120;
+  public double timeToSell = 150;
 
   @Input(name = "Max capital in the market to lend")
   public double marketMaxCapital = 10000000;

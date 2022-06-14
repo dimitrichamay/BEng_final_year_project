@@ -14,6 +14,7 @@ public class NoiseTrader extends OptionTrader {
 
   @Override
   public void init() {
+    super.init();
     capital = 5000;
     random = this.getPrng().generator;
     tradingThresh = getPrng().uniform(0, 1).sample();

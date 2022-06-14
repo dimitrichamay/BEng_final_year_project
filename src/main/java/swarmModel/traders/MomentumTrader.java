@@ -11,7 +11,7 @@ import swarmModel.links.Messages;
    This agent is an example implementation of a moving average trading strategy
 */
 
-public class MomentumTrader extends Borrower {
+public class MomentumTrader extends OptionTrader {
 
   @Variable(name = "Long Term Moving Average")
   public double longTermMovingAvg;
@@ -19,7 +19,8 @@ public class MomentumTrader extends Borrower {
   @Variable(name = "Short Term Moving Average")
   public double shortTermMovingAvg;
 
-  private double generalOpinion = 0;
+  @Variable(name = "General Opinion")
+  public double opinion = 0;
 
   // Helper function for ease of interpretation
   private static Action<MomentumTrader> action(SerializableConsumer<MomentumTrader> consumer) {
@@ -28,7 +29,7 @@ public class MomentumTrader extends Borrower {
 
   public static Action<MomentumTrader> updateOpinion(){
     return action(trader -> {
-      trader.generalOpinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
+      trader.opinion = trader.getMessagesOfType(Messages.OpinionShared.class).stream()
           .mapToDouble(opinion -> opinion.opinion).average().orElse(0);
     });
   }
@@ -36,6 +37,7 @@ public class MomentumTrader extends Borrower {
   public static Action<MomentumTrader> processInformation() {
     return action(
         trader -> {
+          double probToBuy = trader.getPrng().uniform(0, 1).sample();
           if (trader.getContext().getTick() > trader.getGlobals().longTermAveragePeriod) {
             trader.longTermMovingAvg = trader
                 .getTermMovingAvg(trader.getGlobals().longTermAveragePeriod,
@@ -43,7 +45,6 @@ public class MomentumTrader extends Borrower {
             trader.shortTermMovingAvg = trader
                 .getTermMovingAvg(trader.getGlobals().shortTermAveragePeriod,
                     trader.getGlobals().historicalPrices);
-            double probToBuy = trader.getPrng().uniform(0, 1).sample();
 
             if (trader.shortTermMovingAvg > trader.longTermMovingAvg && probToBuy < trader
                 .getGlobals().traderActivity) {
@@ -54,11 +55,11 @@ public class MomentumTrader extends Borrower {
             }
           }
 
-          // Momentum buy medium-term options based on the general population opinion every 5 steps
+          // Momentum buy medium-term options based on the general population
           if (trader.getContext().getTick() > trader.getGlobals().timeToStartOpinionSharing
-              && trader.getContext().getTick() % 5 == 0) {
+              && probToBuy < trader.getGlobals().traderActivity) {
 
-            if (trader.generalOpinion > 0) {
+            if (trader.opinion > 0) {
               trader.buyCallOption(trader.optionExpiryTime,
                   trader.getGlobals().marketPrice * trader.getGlobals().callStrikeFactor);
             } else {

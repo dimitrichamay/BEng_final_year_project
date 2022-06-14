@@ -22,16 +22,19 @@ public class OptionTrader extends BaseTrader {
   @Variable
   public double callOptions = 0;
 
-  private double optionOpinionThreshold = 0.6;
+  private final double optionOpinionThreshold = 0.2;
   public int optionExpiryTime;
   public double sharesToSell = 0;
   public double sharesToBuy = 0;
+  private double hedgeProportion;
 
   public List<Option> boughtOptions = new ArrayList<>();
 
   @Override
   public void init() {
+    super.init();
     optionExpiryTime = (int) Math.floor(getPrng().uniform(10, 25).sample());
+    hedgeProportion = getPrng().uniform(0.4, 1).sample();
   }
 
   private static Action<OptionTrader> action(SerializableConsumer<OptionTrader> consumer) {
@@ -210,12 +213,17 @@ public class OptionTrader extends BaseTrader {
 
   public double calcualteDelta(Option option) {
     double delta = 0;
+    // We do not want to update the hedge if the option is close to expiry
+    if (option.getTimeToExpiry() < 5){
+      return 0;
+    }
+
     double currentOptionPrice = calculateOptionPrice(option);
     double initialOptionPrice = option.getOptionPrice();
 
-    // This is the value of delta for 10 shares since this is what an option represents
+    // This is the value of delta for 100 shares since this is what an option represents
     delta = ((currentOptionPrice - initialOptionPrice) / (getGlobals().marketPrice - option
-        .getInitialStockPrice())) * getGlobals().optionShareNumber;
+        .getInitialStockPrice()));
 
     // The value of delta for each individual option contract is between -1 and 1
     if (option.isCallOption()){
@@ -233,13 +241,14 @@ public class OptionTrader extends BaseTrader {
         delta = 0;
       }
     }
-
+    //System.out.println(getContext().getTick() + ". Delta: " + delta + ", curr " + currentOptionPrice + ", initial " + initialOptionPrice + ", Stockinitial " + option.getInitialStockPrice() + ", stockNow " + getGlobals().marketPrice);
     return delta;
   }
 
   public void deltaHedge() {
     // Calculates the total delta of the portfolio
     double totalDelta = Math.round(boughtOptions.stream().mapToDouble(this::calcualteDelta).sum());
+    totalDelta *= hedgeProportion;
     double changeInHedge = 0;
     double absoluteHedge = Math.abs(hedgePosition);
     double absoluteDelta = Math.abs(totalDelta);
@@ -294,7 +303,7 @@ public class OptionTrader extends BaseTrader {
   protected void tradeOnOpinion(double generalOpinion, double sensitivity) {
     double scaledOpinion = Math.abs(generalOpinion / 20);
     double sensitiveOpinion =
-        (Math.exp(scaledOpinion * sensitivity) - 1) / (Math.exp(sensitivity) - 1);
+        (Math.exp(scaledOpinion * 10 * sensitivity) - 1) / (Math.exp(10 * sensitivity) - 1);
     if (sensitiveOpinion <= 0) {
       sensitiveOpinion = 0;
     } else if (sensitiveOpinion > 1) {
@@ -305,10 +314,10 @@ public class OptionTrader extends BaseTrader {
     if (generalOpinion > 0) {
       buy(Math.abs(sharesTraded));
       if (sensitiveOpinion > optionOpinionThreshold) {
+        System.out.println(optionExpiryTime);
         buyCallOption(optionExpiryTime, getGlobals().marketPrice * getGlobals().callStrikeFactor);
       }
     } else {
-      System.out.println("tick: " + getContext().getTick() + " opinion: " + sensitiveOpinion);
       sell(Math.abs(sharesTraded));
       if (sensitiveOpinion > optionOpinionThreshold) {
         buyPutOption(optionExpiryTime, getGlobals().marketPrice * getGlobals().putStrikeFactor);

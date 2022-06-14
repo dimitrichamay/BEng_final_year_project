@@ -9,9 +9,9 @@ public class Option {
   //This is represented as the number of steps until it expires
   private int timeToExpiry;
 
-  private double exercisePrice;
-  private double initialStockPrice;
-  private type optionType;
+  private final double exercisePrice;
+  private final double initialStockPrice;
+  private final type optionType;
 
 
 

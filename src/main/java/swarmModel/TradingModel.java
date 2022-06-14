@@ -22,7 +22,7 @@ import swarmModel.traders.NoiseTrader;
 import swarmModel.traders.OptionTrader;
 import swarmModel.traders.RetailInvestor;
 
-@ModelSettings(timeUnit = "DAYS", start = "2021-01-01T00:00:00Z", id = "GME_squeeze", end = 150L)
+@ModelSettings(timeUnit = "DAYS", start = "2021-01-01T00:00:00Z", id = "GME_squeeze", end = 250L)
 public class TradingModel extends AgentBasedModel<Globals> {
 
   {
@@ -115,12 +115,12 @@ public class TradingModel extends AgentBasedModel<Globals> {
     updateProjectedPrice();
     run(Exchange.updateDemandPrediction());
 
-    run(OptionTrader.updateOptions());
+   run(OptionTrader.updateOptions());
 
-    run(Borrower.processBorrowing(),
-        Bank.lendMoney(),
-        Borrower.actOnLoan()
-    );
+  //  run(Borrower.processBorrowing(),
+  //      Bank.lendMoney(),
+  //      Borrower.actOnLoan()
+   // );
 
     run(
         Split.create(
@@ -148,6 +148,8 @@ public class TradingModel extends AgentBasedModel<Globals> {
 
   public void updateHistoricalPrices() {
     getGlobals().historicalPrices.put(getContext().getTick(), getGlobals().marketPrice);
+    getGlobals().traderActivity = getContext().getPrng().uniform(0.1, 0.5).sample();
+    getGlobals().rsiPeriod = getContext().getPrng().discrete(10, 20).sample();
   }
 
   // This uses the Vasicek Interest Rate Model, dr_t = a(b-r_t)dt + sigma * dW_t, we look at the UK in this model
@@ -193,10 +195,6 @@ public class TradingModel extends AgentBasedModel<Globals> {
     // Net Demand Prediction in t steps time
     double netDemand = predictNetDemand(t);
     return (netDemand / getNumberOfTraders()) / getGlobals().lambda;
-  }
-
-  private double getLendingRate() {
-    return getGlobals().interestRate + getGlobals().interestMargin;
   }
 
   private long getNumberOfTraders() {

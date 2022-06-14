@@ -1,9 +1,10 @@
 package swarmModel.traders;
 
 import simudyne.core.abm.Action;
+import simudyne.core.annotations.Variable;
 import simudyne.core.functions.SerializableConsumer;
 
-public class FundamentalTrader extends Borrower {
+public class FundamentalTrader extends BaseTrader {
 
   //Helper function for ease of interpretation
   private static Action<FundamentalTrader> action(
@@ -11,12 +12,15 @@ public class FundamentalTrader extends Borrower {
     return Action.create(FundamentalTrader.class, consumer);
   }
 
-  private double rsi = 50;
+  @Variable
+  public double rsi = 50;
+
+  private boolean isTrading = true;
 
   public static Action<FundamentalTrader> processInformation() {
     return action(
         trader -> {
-          if (trader.getContext().getTick() > trader.getGlobals().rsiPeriod) {
+          if (trader.getContext().getTick() > trader.getGlobals().rsiPeriod && trader.isTrading) {
             trader.rsi = trader.calculateRSI();
             if (trader.rsi > trader.getGlobals().overBuyThresh) {
               trader.sell(trader.getGlobals().stdVolume);
@@ -24,6 +28,7 @@ public class FundamentalTrader extends Borrower {
               trader.buy(trader.getGlobals().stdVolume);
             }
           }
+          trader.isTrading = trader.getPrng().normal(0, 1).sample() < 0.1;
         });
   }
 

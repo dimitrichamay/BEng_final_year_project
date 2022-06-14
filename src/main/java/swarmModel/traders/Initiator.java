@@ -18,6 +18,7 @@ public class Initiator extends Agent<Globals> {
 
   @Override
   public void init() {
+    super.init();
     this.opinion = getGlobals().maxOpinion;
   }
 
