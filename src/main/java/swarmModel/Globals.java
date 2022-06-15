@@ -62,18 +62,17 @@ public final class Globals extends GlobalState {
 
   // This can be changed if desired but is set to the interest rate level in Jan 2021
   @Input(name = "Interest Rate")
-  public double interestRate = 0.3;
-
-  @Input(name = "Net interest margin")
-  public double interestMargin = 0.03;
+  public double interestRate = 0.028;
 
   // The number of ticks over which the derivative polynomial is fitted for netDemand
   @Input(name = "Derivative time frame")
   public double derivativeTimeFrame = 10;
 
-  //todo: change this if demoing the original code
   @Input(name = "Variable Interest Rates")
-  public boolean variableInterestRates = false;
+  public boolean variableInterestRates = true;
+
+  @Constant(name = "Net interest margin")
+  public double interestMargin = 0.03;
 
   @Constant(name = "Call option strike price factor")
   public double callStrikeFactor = 0.95;
@@ -106,6 +105,6 @@ public final class Globals extends GlobalState {
   public int orderOfPoly = 2;
   public double[] coeffs = new double[orderOfPoly];
   public double[] priceCoeffs = new double[orderOfPoly];
-  public double profitFactor = 8;
+  public double profitFactor = 6;
 }
 

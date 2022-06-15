@@ -44,6 +44,7 @@ public class Messages {
 
   public static class BorrowOutcome extends Message {
     public double lendAmount;
+    public boolean isLending;
   }
 
   public static class PayBackLoan extends Message {

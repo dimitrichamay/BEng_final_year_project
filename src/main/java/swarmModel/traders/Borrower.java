@@ -20,7 +20,6 @@ public abstract class Borrower extends OptionTrader {
   public double amountToBorrow = 0;
   private int interestRepaymentStep = 5;
   public boolean isTrading = true;
-  private final double lossToStopTrading = 1.5;
   public boolean canBorrow = true;
 
   @Override
@@ -54,12 +53,15 @@ public abstract class Borrower extends OptionTrader {
           .mapToDouble(m -> m.lendAmount)
           .sum();
 
+      boolean bankLending  = trader.getMessagesOfType(Messages.BorrowOutcome.class).stream().allMatch(
+          m-> m.isLending
+      );
+
       // Update amount borrowed to account for interest
       trader.accruedInterest += (trader.amountBorrowed * (trader.getLendingRate() / 365));
-
       trader.amountBorrowed += loan;
       trader.capital += loan;
-      trader.canBorrow = trader.amountToBorrow <= loan;
+      trader.canBorrow = bankLending;
 
       trader.amountToBorrow = 0;
     });
@@ -104,7 +106,7 @@ public abstract class Borrower extends OptionTrader {
     double paidBack = 0;
 
     // Is in insurmountable debt, stop trading completely
-    if (portfolio * lossToStopTrading < amountBorrowed || (!canBorrow && portfolio < 0)) {
+    if (!canBorrow && portfolio < 0) {
       isTrading = false;
     }
 
@@ -120,8 +122,8 @@ public abstract class Borrower extends OptionTrader {
           if (increaseFromInterest < priceChangePrediction) {
             // Price is expected to rise more than interestRates so use capital to pay back
             if (shares > 0) {
-              paidBack += Math.min(amountBorrowed, capital);
-              capital -= Math.min(amountBorrowed, capital);
+              paidBack += Math.min(amountBorrowed / 2, capital / 2);
+              capital -= Math.min(amountBorrowed / 2, capital / 2);
             }
             // We have a short position so we choose to cover this first with our capital
             else {
@@ -165,14 +167,12 @@ public abstract class Borrower extends OptionTrader {
   @Override
   public void putValuesUpdate(Option option) {
     if ((option.getExercisePrice() - getGlobals().projectedPrice) * getGlobals().profitFactor
-            > (
-            getOptionPremium(option)
-                * getGlobals().interestRate)) {
+        > (getOptionPremium(option) * getGlobals().interestRate)) {
       if (capital < option.getOptionPrice()) {
         if (!canBorrow) {
           return;
         }
-        amountToBorrow += option.getOptionPrice();
+        amountToBorrow += option.getOptionPrice() - capital;
       }
       super.putValuesUpdate(option);
     }
@@ -181,14 +181,12 @@ public abstract class Borrower extends OptionTrader {
   @Override
   public void callValuesUpdate(Option option) {
     if ((getGlobals().projectedPrice - option.getExercisePrice()) * getGlobals().profitFactor
-            > (
-            getOptionPremium(option)
-                * getGlobals().interestRate)) {
-      if (capital < 0) {
+        > (getOptionPremium(option) * getGlobals().interestRate)) {
+      if (capital < option.getOptionPrice()) {
         if (!canBorrow) {
           return;
         }
-        amountToBorrow += option.getOptionPrice();
+        amountToBorrow += option.getOptionPrice() - capital;
       }
       super.callValuesUpdate(option);
     }
@@ -218,7 +216,6 @@ public abstract class Borrower extends OptionTrader {
     return getGlobals().interestRate + getGlobals().interestMargin;
   }
 
-  //todo: check if this is needed
   private double getOptionPremium(Option option) {
     if (option.isCallOption()) {
       // The option is out of the money so its price does not include intrinsic value

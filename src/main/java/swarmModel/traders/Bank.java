@@ -45,21 +45,23 @@ public class Bank extends Agent<Globals> {
       // Process borrow requests
       bank.getMessagesOfType(BorrowRequest.class).forEach(m ->
       {
-        /*
-        if (bank.capitalToLend <= 0) {
-          bank.send(Messages.BorrowOutcome.class, (msg) -> msg.lendAmount = 0)
-              .to(m.getSender());
-        } else {
-          */
-        double amountLent = Math.min(m.borrowAmount, bank.capitalToLend);
-        bank.moneyLent += amountLent;
-        bank.capitalToLend -= amountLent;
 
-        bank.send(Messages.BorrowOutcome.class, (msg) -> msg.lendAmount = amountLent)
-            .to(m.getSender());
-        //  }
+        if (bank.capitalToLend <= 0) {
+          bank.send(Messages.BorrowOutcome.class, (msg) -> {
+            msg.isLending = false;
+            msg.lendAmount = 0;
+          }).to(m.getSender());
+        } else {
+          double amountLent = Math.min(m.borrowAmount, bank.capitalToLend);
+          bank.moneyLent += amountLent;
+          bank.capitalToLend -= amountLent;
+
+          bank.send(Messages.BorrowOutcome.class, (msg) -> {
+            msg.lendAmount = amountLent;
+            msg.isLending = true;
+          }).to(m.getSender());
+        }
       });
     });
   }
-
 }
