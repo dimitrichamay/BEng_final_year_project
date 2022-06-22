@@ -119,14 +119,15 @@ public class TradingModel extends AgentBasedModel<Globals> {
     run(OptionTrader.updateOptions());
 
     /*
-    This is deactivated for the purpose of the submission
-    Uncomment these lines to allow borrowing
+    Borrowing is deactivated for the purpose of the submission.
+    In order to allow borrowing, uncomment the lines below and change RetailInvestor,
+    MomentumTrader and FundamentalTrader to extend Borrower instead of OptionTrader
 
     run(Borrower.processBorrowing(),
         Bank.lendMoney(),
         Borrower.actOnLoan()
     );
-     */
+    */
 
     run(
         Split.create(
