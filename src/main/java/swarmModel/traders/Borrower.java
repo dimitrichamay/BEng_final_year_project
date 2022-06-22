@@ -53,9 +53,10 @@ public abstract class Borrower extends OptionTrader {
           .mapToDouble(m -> m.lendAmount)
           .sum();
 
-      boolean bankLending  = trader.getMessagesOfType(Messages.BorrowOutcome.class).stream().allMatch(
-          m-> m.isLending
-      );
+      boolean bankLending = trader.getMessagesOfType(Messages.BorrowOutcome.class).stream()
+          .allMatch(
+              m -> m.isLending
+          );
 
       // Update amount borrowed to account for interest
       trader.accruedInterest += (trader.amountBorrowed * (trader.getLendingRate() / 365));

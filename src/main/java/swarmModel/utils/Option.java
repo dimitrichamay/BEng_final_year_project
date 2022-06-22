@@ -6,7 +6,7 @@ public class Option {
 
   private double optionPrice = 0;
 
-  //This is represented as the number of steps until it expires
+  // This is represented as the number of steps until it expires
   private int timeToExpiry;
 
   private final double exercisePrice;

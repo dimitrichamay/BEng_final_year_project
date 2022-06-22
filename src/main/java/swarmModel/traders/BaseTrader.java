@@ -64,7 +64,7 @@ public abstract class BaseTrader extends Agent<Globals> {
 
   public void sell(double volume) {
     double toSell = volume;
-    //If doesn't have enough shares short sell
+    // If doesn't have enough shares short sell
     if (shares <= 0) {
       shortStock((int) volume);
       toSell = 0;
@@ -102,7 +102,7 @@ public abstract class BaseTrader extends Agent<Globals> {
     capital += volume * getGlobals().marketPrice;
     getDoubleAccumulator("shorts").add(volume);
 
-    //Update sell order numbers
+    // Update sell order numbers
     sellValuesUpdate(volume);
   }
 
@@ -133,11 +133,4 @@ public abstract class BaseTrader extends Agent<Globals> {
     return new PolynomialFunction(getGlobals().coeffs)
         .value(getContext().getTick() + tickOffset);
   }
-
-  /* If the net demand is expected to be > 0, from the price dynamics we
-     therefore also expect the price to increase */
-  protected boolean priceIncreasePredicted() {
-    return predictNetDemand(0) > 0;
-  }
-
 }

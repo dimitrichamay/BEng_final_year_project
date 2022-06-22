@@ -24,7 +24,7 @@ public class FundamentalTrader extends BaseTrader {
             trader.rsi = trader.calculateRSI();
             if (trader.rsi > trader.getGlobals().overBuyThresh) {
               trader.sell(trader.getGlobals().stdVolume);
-            } else if (trader.rsi  < trader.getGlobals().overSellThresh) {
+            } else if (trader.rsi < trader.getGlobals().overSellThresh) {
               trader.buy(trader.getGlobals().stdVolume);
             }
           }

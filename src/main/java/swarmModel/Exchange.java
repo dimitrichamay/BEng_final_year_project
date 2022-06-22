@@ -16,7 +16,6 @@ public class Exchange extends Agent<Globals> {
   @Variable
   public double price = 15;
 
-  //Helper function for ease of interpretation
   private static Action<Exchange> action(SerializableConsumer<Exchange> consumer) {
     return Action.create(Exchange.class, consumer);
   }
@@ -58,7 +57,7 @@ public class Exchange extends Agent<Globals> {
 
             exchange.getGlobals().marketPrice = exchange.price;
 
-            //Send latest price change and price to traders
+            // Send latest price change and price to traders
             exchange.getLinks(Links.TradeLink.class)
                 .send(Messages.MarketPriceMessage.class, (msg, link) -> {
                   msg.priceChange = priceChange;

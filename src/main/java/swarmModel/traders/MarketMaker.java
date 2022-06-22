@@ -1,17 +1,9 @@
 package swarmModel.traders;
 
-import java.util.Map.Entry;
-import org.apache.commons.math3.analysis.polynomials.PolynomialFunction;
 import simudyne.core.abm.Action;
 import simudyne.core.functions.SerializableConsumer;
 import swarmModel.links.Messages;
 import swarmModel.utils.Option;
-
-/* On each time step the market maker updates the current buy and sell price based on
- *  the demand in the market. Traders can then buy or sell some number of assets.
- *  Orders influence the asset's price (and the market makers behaviour when
- *  options are added later and the market maker needs to cover their position)
- *  Pricing algorithm reference: https://econweb.ucsd.edu/~rstarr/Shen-StarrMktMaker.pdf */
 
 public class MarketMaker extends BaseTrader {
 
@@ -22,7 +14,7 @@ public class MarketMaker extends BaseTrader {
   private int sharesToBuy = 0;
   private int sharesToSell = 0;
 
-  //Helper function for ease of interpretation
+  // Helper function for ease of interpretation
   private static Action<MarketMaker> action(SerializableConsumer<MarketMaker> consumer) {
     return Action.create(MarketMaker.class, consumer);
   }

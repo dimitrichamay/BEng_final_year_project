@@ -7,7 +7,7 @@ import swarmModel.links.Links.OpinionLink;
 import swarmModel.links.Messages;
 import swarmModel.links.Messages.OpinionShared;
 
-public class RetailInvestor extends Borrower {
+public class RetailInvestor extends OptionTrader {
 
   @Variable
   public double opinion;

@@ -238,7 +238,6 @@ public class OptionTrader extends BaseTrader {
         delta = 0;
       }
     }
-    //System.out.println(getContext().getTick() + ". Delta: " + delta + ", curr " + currentOptionPrice + ", initial " + initialOptionPrice + ", Stockinitial " + option.getInitialStockPrice() + ", stockNow " + getGlobals().marketPrice);
     return delta;
   }
 

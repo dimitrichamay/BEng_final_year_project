@@ -5,7 +5,7 @@ import simudyne.core.functions.SerializableConsumer;
 
 /* Holds a very large initial short position which leads to
    having to cover this position as the price increases */
-public class HedgeFund extends BaseTrader {
+public class HedgeFund extends OptionTrader {
 
   private final double shortingPhase = 5;
   private final double shortVolume = 500;
@@ -24,13 +24,12 @@ public class HedgeFund extends BaseTrader {
         trader.sell(trader.shortVolume);
       } else {
         double increaseProportion = trader.getGlobals().marketPrice / trader.initialMarketPrice;
-        if (increaseProportion < trader.takeProfit){
-         trader.buy(Math.abs(trader.shares));
+        if (increaseProportion < trader.takeProfit) {
+          trader.buy(Math.abs(trader.shares));
         }
         // Second short selling phase to try and make the market fall
         if (increaseProportion > trader.secondShortSellIncrease && !trader.secondShort) {
           trader.sell(trader.shortVolume * increaseProportion);
-          //trader.buyPutOption(trader.optionExpiryTime, trader.getGlobals().marketPrice * trader.getGlobals().putStrikeFactor);
           if (trader.getContext().getTick() % trader.shortingPhase == 0) {
             trader.secondShort = true;
           }

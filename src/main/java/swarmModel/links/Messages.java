@@ -6,15 +6,11 @@ import swarmModel.utils.Option;
 public class Messages {
 
   public static class BuyOrderPlaced extends Message {
-
     public double volume;
-    public double buyPrice;
   }
 
   public static class SellOrderPlaced extends Message {
-
     public double volume;
-    public double sellPrice;
   }
 
   public static class MarketPriceMessage extends Message {

@@ -9,9 +9,8 @@ import swarmModel.TradingModel;
 
 public class MainHeadless {
 
+  // Runs model with given parameters and puts result in outputs folder for use with python script
   public static void main(String[] args) {
-    //Server.register("Trading Model", TradingModel.class);
-    //Server.run();
     try {
       RunnerBackend runnerBackend = RunnerBackend.create();
       ModelRunner modelRunner = runnerBackend.forModel(TradingModel.class);
